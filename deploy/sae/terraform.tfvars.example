@@ -1,0 +1,34 @@
+# Terraform变量示例文件 - SAE部署
+# 复制此文件为 terraform.tfvars 并填写实际值
+
+# ==================== 阿里云认证（必填）====================
+access_key = "your-access-key-id"
+secret_key = "your-access-key-secret"
+region     = "cn-hangzhou"
+
+# ==================== 项目配置 ====================
+project_name = "app-platform"
+environment  = "production"
+
+# ==================== SAE配置 ====================
+# 镜像地址（部署后自动生成）
+backend_image_url = "registry.cn-hangzhou.aliyuncs.com/app-platform/backend:latest"
+
+# 实例规格
+sae_cpu     = 1000   # 1核（毫核）
+sae_memory  = 2048   # 2GB（MB）
+sae_replicas = 2     # 初始实例数
+
+# 自动扩缩容
+sae_min_replicas = 1   # 最小实例数（可缩至1，节省成本）
+sae_max_replicas = 20  # 最大实例数
+
+# ==================== RDS配置 ====================
+rds_instance_type = "mysql.n2.small.1"  # 1核2G，约¥200/月
+rds_storage       = 20                   # 20GB存储
+db_name           = "app_platform"
+db_user           = "app_platform"
+db_password       = "YourSecurePassword123!"  # 至少8位，包含大小写和数字
+
+# ==================== 应用配置 ====================
+jwt_secret = "your-random-32-character-string-here"
