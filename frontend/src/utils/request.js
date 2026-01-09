@@ -1,8 +1,20 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
+// 根据环境自动选择API地址
+const getBaseURL = () => {
+  // 如果是通过代理访问（开发模式），使用相对路径
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return '/api/v1'
+  }
+  // 生产环境或通过公网访问时，使用绝对路径
+  // 将前端域名中的5173替换为8080
+  const apiHost = window.location.origin.replace('5173', '8080')
+  return `${apiHost}/api/v1`
+}
+
 const request = axios.create({
-  baseURL: '/api/v1',
+  baseURL: getBaseURL(),
   timeout: 30000
 })
 
