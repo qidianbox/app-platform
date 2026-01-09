@@ -34,8 +34,8 @@
             <el-icon v-else :size="40" color="#409EFF"><Platform /></el-icon>
           </div>
           <div class="app-info">
-            <h3 class="app-name">{{ app.app_name }}</h3>
-            <div class="app-key" :title="app.app_key">{{ shortenAppKey(app.app_key) }}</div>
+            <h3 class="app-name">{{ app.name }}</h3>
+            <div class="app-key" :title="app.app_id">{{ shortenAppKey(app.app_id) }}</div>
           </div>
           <el-tag :type="app.status === 1 ? 'success' : 'danger'" size="small">
             {{ app.status === 1 ? '运行中' : '已停用' }}
@@ -268,8 +268,8 @@ const filteredApps = computed(() => {
   if (!searchKeyword.value) return appList.value
   const keyword = searchKeyword.value.toLowerCase()
   return appList.value.filter(app =>
-    app.app_name.toLowerCase().includes(keyword) ||
-    app.app_key.toLowerCase().includes(keyword)
+    (app.name || '').toLowerCase().includes(keyword) ||
+    (app.app_id || '').toLowerCase().includes(keyword)
   )
 })
 
