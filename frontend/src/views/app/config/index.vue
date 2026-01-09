@@ -330,6 +330,7 @@
               <el-button type="primary" @click="saveModuleConfig('user_management')">保存配置</el-button>
               <el-button @click="testConfig('user_management')">测试配置</el-button>
               <el-button @click="resetConfig('user_management')">重置</el-button>
+              <el-button @click="showConfigHistory('user_management')">查看历史</el-button>
             </el-form-item>
           </el-form>
         </div>
@@ -868,6 +869,48 @@
         </template>
       </div>
     </div>
+
+    <!-- 配置历史记录对话框 -->
+    <el-dialog 
+      v-model="historyDialogVisible" 
+      title="配置历史记录" 
+      width="800px"
+      :close-on-click-modal="false"
+    >
+      <el-table 
+        :data="configHistory" 
+        v-loading="loadingHistory"
+        style="width: 100%"
+      >
+        <el-table-column prop="version" label="版本" width="80" />
+        <el-table-column prop="operator" label="操作人" width="120" />
+        <el-table-column label="配置内容" min-width="200">
+          <template #default="{ row }">
+            <pre style="margin: 0; font-size: 12px; max-height: 100px; overflow: auto;">{{ formatConfig(row.config) }}</pre>
+          </template>
+        </el-table-column>
+        <el-table-column label="创建时间" width="180">
+          <template #default="{ row }">
+            {{ formatDate(row.created_at) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="100" fixed="right">
+          <template #default="{ row }">
+            <el-button 
+              type="primary" 
+              size="small" 
+              @click="rollbackToHistory(row.id)"
+            >
+              回滚
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      
+      <template #footer>
+        <el-button @click="historyDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -879,7 +922,7 @@ import {
   CreditCard, ChatDotRound, DataLine, Document, Monitor, 
   FolderOpened, Tools, Box, Grid, Warning, CopyDocument 
 } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 
 const route = useRoute()
@@ -1235,8 +1278,85 @@ const testConfig = (moduleKey) => {
 }
 
 // 重置配置
-const resetConfig = (moduleKey) => {
-  ElMessage.info('配置已重置')
+const resetConfig = async (moduleKey) => {
+  try {
+    await ElMessageBox.confirm('确定要重置此模块的配置吗？重置后将恢复为默认配置。', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    await request.post(`/apps/${appId.value}/modules/${moduleKey}/config/reset`)
+    ElMessage.success('配置已重置')
+    // 重新加载配置
+    await loadModuleConfig(moduleKey)
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('重置配置失败:', error)
+      ElMessage.error('重置失败')
+    }
+  }
+}
+
+// 配置历史记录
+const historyDialogVisible = ref(false)
+const currentHistoryModule = ref('')
+const configHistory = ref([])
+const loadingHistory = ref(false)
+
+// 显示配置历史
+const showConfigHistory = async (moduleKey) => {
+  currentHistoryModule.value = moduleKey
+  historyDialogVisible.value = true
+  await loadConfigHistory(moduleKey)
+}
+
+// 加载配置历史
+const loadConfigHistory = async (moduleKey) => {
+  loadingHistory.value = true
+  try {
+    const res = await request.get(`/apps/${appId.value}/modules/${moduleKey}/config/history`)
+    if (res.code === 0 && res.data) {
+      configHistory.value = res.data
+    }
+  } catch (error) {
+    console.error('加载历史记录失败:', error)
+    ElMessage.error('加载失败')
+  } finally {
+    loadingHistory.value = false
+  }
+}
+
+// 回滚配置
+const rollbackToHistory = async (historyId) => {
+  try {
+    await ElMessageBox.confirm('确定要回滚到该版本的配置吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    await request.post(`/apps/${appId.value}/modules/${currentHistoryModule.value}/config/rollback/${historyId}`)
+    ElMessage.success('配置已回滚')
+    historyDialogVisible.value = false
+    // 重新加载配置
+    await loadModuleConfig(currentHistoryModule.value)
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('回滚配置失败:', error)
+      ElMessage.error('回滚失败')
+    }
+  }
+}
+
+// 格式化配置显示
+const formatConfig = (config) => {
+  try {
+    const configObj = typeof config === 'string' ? JSON.parse(config) : config
+    return JSON.stringify(configObj, null, 2)
+  } catch {
+    return config
+  }
 }
 
 onMounted(() => {
