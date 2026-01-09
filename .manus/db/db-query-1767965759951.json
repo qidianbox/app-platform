@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS app_module_configs (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  app_id INT NOT NULL COMMENT 'APP ID',\n  module_code VARCHAR(100) NOT NULL COMMENT '模块代码',\n  config_data JSON NOT NULL COMMENT '配置数据(JSON格式)',\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',\n  UNIQUE KEY uk_app_module (app_id, module_code),\n  INDEX idx_app_id (app_id),\n  INDEX idx_module_code (module_code)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='APP模块配置表';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3HmF555sZ6wXsVo.885fbf394348 --database cSZcQBnZuHpLU79S85jppV --execute CREATE TABLE IF NOT EXISTS app_module_configs (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  app_id INT NOT NULL COMMENT 'APP ID',\n  module_code VARCHAR(100) NOT NULL COMMENT '模块代码',\n  config_data JSON NOT NULL COMMENT '配置数据(JSON格式)',\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',\n  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',\n  UNIQUE KEY uk_app_module (app_id, module_code),\n  INDEX idx_app_id (app_id),\n  INDEX idx_module_code (module_code)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='APP模块配置表';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2231
+}

@@ -43,7 +43,7 @@
         <div 
           class="sidebar-item"
           :class="{ active: currentPage === 'overview' }"
-          @click="currentPage = 'overview'"
+          @click="switchPage('overview')"
         >
           <el-icon><House /></el-icon>
           <span>概览</span>
@@ -53,7 +53,7 @@
         <div 
           class="sidebar-item"
           :class="{ active: currentPage === 'basic' }"
-          @click="currentPage = 'basic'"
+          @click="switchPage('basic')"
         >
           <el-icon><Setting /></el-icon>
           <span>基础配置</span>
@@ -83,7 +83,7 @@
                 :key="module.source_module"
                 class="sidebar-item sub-item"
                 :class="{ active: currentPage === module.source_module }"
-                @click="currentPage = module.source_module"
+                @click="switchPage(module.source_module)"
               >
                 <span>{{ module.name }}</span>
               </div>
@@ -1063,6 +1063,15 @@ const versionConfig = ref({
   iosUrl: ''
 })
 
+// 切换页面
+const switchPage = (page) => {
+  currentPage.value = page
+  // 切换到模块配置页面时加载配置
+  if (page !== 'overview' && page !== 'basic') {
+    loadModuleConfig(page)
+  }
+}
+
 // 切换分组展开/收起
 const toggleGroup = (groupKey) => {
   const index = expandedGroups.value.indexOf(groupKey)
@@ -1159,13 +1168,63 @@ const resetBasicConfig = () => {
   basicConfig.value.package_name = appInfo.value.package_name || ''
 }
 
+// 获取模块配置数据
+const getModuleConfigData = (moduleKey) => {
+  const configMap = {
+    'user_management': userConfig.value,
+    'message_center': messageConfig.value,
+    'push_service': pushConfig.value,
+    'payment': paymentConfig.value,
+    'sms_service': smsConfig.value,
+    'data_tracking': trackingConfig.value,
+    'log_service': logConfig.value,
+    'monitor_alert': monitorConfig.value,
+    'file_storage': fileConfig.value,
+    'config_management': configMgmtConfig.value,
+    'version_management': versionConfig.value
+  }
+  return configMap[moduleKey] || {}
+}
+
+// 加载模块配置
+const loadModuleConfig = async (moduleKey) => {
+  try {
+    const res = await request.get(`/apps/${appId.value}/modules/${moduleKey}/config`)
+    if (res.code === 0 && res.data && res.data.config) {
+      const config = typeof res.data.config === 'string' ? JSON.parse(res.data.config) : res.data.config
+      // 更新对应的配置对象
+      const configMap = {
+        'user_management': userConfig,
+        'message_center': messageConfig,
+        'push_service': pushConfig,
+        'payment': paymentConfig,
+        'sms_service': smsConfig,
+        'data_tracking': trackingConfig,
+        'log_service': logConfig,
+        'monitor_alert': monitorConfig,
+        'file_storage': fileConfig,
+        'config_management': configMgmtConfig,
+        'version_management': versionConfig
+      }
+      if (configMap[moduleKey]) {
+        Object.assign(configMap[moduleKey].value, config)
+      }
+    }
+  } catch (error) {
+    console.error('加载配置失败:', error)
+  }
+}
+
 // 保存模块配置
 const saveModuleConfig = async (moduleKey) => {
   try {
-    // 这里调用后端API保存配置
-    // await request.put(`/api/v1/apps/${appId.value}/modules/${moduleKey}/config`, configData)
+    const configData = getModuleConfigData(moduleKey)
+    await request.put(`/apps/${appId.value}/modules/${moduleKey}/config`, {
+      config: configData
+    })
     ElMessage.success('配置保存成功')
   } catch (error) {
+    console.error('保存配置失败:', error)
     ElMessage.error('保存失败')
   }
 }
