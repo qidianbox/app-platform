@@ -94,3 +94,11 @@
   - [ ] 顶部Tab：工作台 + 配置中心
   - [ ] 工作台：左侧边栏功能菜单 + 主内容区差异化功能
   - [ ] 配置中心：显示该APP选择的模块配置项
+
+
+## 数据库迁移到Manus平台
+- [x] 获取Manus数据库连接信息
+- [x] 在Manus数据库中创建所需表结构（apps、app_modules、module_templates、admins等）
+- [x] 修改后端配置使用Manus数据库
+- [x] 测试后端连接和功能
+- [ ] 推送代码到GitHub

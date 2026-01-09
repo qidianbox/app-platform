@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE admins SET password = '$2a$10$djrytJiDVEa.IiCoWgBBFe2/JiD4OF3MRW91.Uksc3SRrmJHGRbpG' WHERE username = 'admin';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3HmF555sZ6wXsVo.885fbf394348 --database cSZcQBnZuHpLU79S85jppV --execute UPDATE admins SET password = '$2a$10$djrytJiDVEa.IiCoWgBBFe2/JiD4OF3MRW91.Uksc3SRrmJHGRbpG' WHERE username = 'admin';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1492
+}
