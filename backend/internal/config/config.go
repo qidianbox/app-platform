@@ -28,7 +28,7 @@ type DatabaseConfig struct {
 
 type JWTConfig struct {
 	Secret string `yaml:"secret"`
-	Expire int    `yaml:"expire"`
+	Expire int    `yaml:"expire_hours"`
 }
 
 type CORSConfig struct {
