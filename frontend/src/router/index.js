@@ -22,27 +22,17 @@ const routes = [
         component: () => import('@/views/app/index.vue')
       },
       {
-        path: 'apps/:id/config',
-        name: 'AppConfig',
-        component: () => import('@/views/app/config/index.vue'),
-        children: [
-          { path: '', redirect: 'dashboard' },
-          { path: 'dashboard', name: 'AppConfigDashboard', component: () => import('@/views/app/config/Dashboard.vue') },
-          { path: 'user', name: 'UserConfig', component: () => import('@/views/app/config/UserConfig.vue') },
-          { path: 'message', name: 'MessageConfig', component: () => import('@/views/app/config/MessageConfig.vue') },
-          { path: 'payment', name: 'PaymentConfig', component: () => import('@/views/app/config/PaymentConfig.vue') },
-          { path: 'analytics', name: 'AnalyticsConfig', component: () => import('@/views/app/config/AnalyticsConfig.vue') },
-          { path: 'security', name: 'SecurityConfig', component: () => import('@/views/app/config/SecurityConfig.vue') },
-          { path: 'version', name: 'VersionConfig', component: () => import('@/views/app/config/VersionConfig.vue') },
-          { path: 'modules', name: 'ModulesConfig', component: () => import('@/views/app/config/ModulesConfig.vue') }
-        ]
-      },
-      {
         path: 'modules',
         name: 'Modules',
         component: () => import('@/views/module/index.vue')
       }
     ]
+  },
+  // APP详情页面独立于主布局，拥有自己的顶部导航
+  {
+    path: '/apps/:id/config',
+    name: 'AppConfig',
+    component: () => import('@/views/app/config/index.vue')
   }
 ]
 

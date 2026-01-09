@@ -97,7 +97,7 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="900px"
+      width="800px"
       @close="handleDialogClose"
     >
       <el-form :model="formData" :rules="formRules" ref="formRef" label-width="100px">
@@ -126,36 +126,31 @@
               <el-button text @click="handleClearAll">清空</el-button>
             </div>
             
-            <!-- 分组展示模块 -->
-            <div v-for="group in groupedModuleTemplates" :key="group.id" class="module-group">
+            <!-- 分组展示大模块 -->
+            <div v-for="group in groupedModules" :key="group.id" class="module-group">
               <div v-if="group.modules.length > 0" class="module-group-header">
                 <span class="group-icon">{{ group.icon }}</span>
                 <span class="group-name">{{ group.name }}</span>
                 <span class="group-desc">{{ group.description }}</span>
-                <el-button text size="small" type="primary" @click="handleSelectGroup(group)">
-                  全选本组
-                </el-button>
               </div>
               <div class="module-grid">
                 <div
                   v-for="module in group.modules"
-                  :key="module.module_code"
+                  :key="module.id"
                   class="module-card"
-                  :class="{ 'is-selected': formData.modules.includes(module.module_code) }"
-                  @click="toggleModule(module.module_code)"
+                  :class="{ 'is-selected': formData.modules.includes(module.id) }"
+                  @click="toggleModule(module.id)"
                 >
                   <div class="module-card-header">
-                    <el-icon :size="32" :color="formData.modules.includes(module.module_code) ? '#409EFF' : '#909399'">
-                      <component :is="module.icon" />
-                    </el-icon>
+                    <span class="module-icon">{{ module.icon }}</span>
                     <el-checkbox
-                      :model-value="formData.modules.includes(module.module_code)"
+                      :model-value="formData.modules.includes(module.id)"
                       @click.stop
-                      @change="toggleModule(module.module_code)"
+                      @change="toggleModule(module.id)"
                     />
                   </div>
                   <div class="module-card-body">
-                    <div class="module-name">{{ module.module_name }}</div>
+                    <div class="module-name">{{ module.name }}</div>
                     <div class="module-desc">{{ module.description }}</div>
                   </div>
                 </div>
@@ -174,18 +169,26 @@
 
     <!-- 模块管理对话框 -->
     <el-dialog v-model="moduleDialogVisible" title="管理模块" width="700px">
-      <el-table :data="currentAppModules" border>
-        <el-table-column prop="module_name" label="模块名称" width="150" />
-        <el-table-column prop="description" label="描述" />
-        <el-table-column label="状态" width="100" align="center">
-          <template #default="{ row }">
+      <div class="module-manage-grid">
+        <div
+          v-for="module in moduleList"
+          :key="module.id"
+          class="module-manage-card"
+          :class="{ 'is-enabled': isModuleEnabled(module.id) }"
+        >
+          <div class="module-manage-header">
+            <span class="module-icon">{{ module.icon }}</span>
             <el-switch
-              v-model="row.is_enabled"
-              @change="handleToggleModule(row)"
+              :model-value="isModuleEnabled(module.id)"
+              @change="handleToggleModule(module)"
             />
-          </template>
-        </el-table-column>
-      </el-table>
+          </div>
+          <div class="module-manage-body">
+            <div class="module-name">{{ module.name }}</div>
+            <div class="module-desc">{{ module.description }}</div>
+          </div>
+        </div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -200,24 +203,14 @@ import {
   Grid,
   User,
   Right,
-  MoreFilled,
   Edit,
   Delete,
   Key,
-  Search,
-  FolderOpened,
-  ChatDotRound,
-  BellFilled,
-  DataAnalysis,
-  Tickets,
-  Setting,
-  Document,
-  Monitor,
-  Wallet
+  Search
 } from '@element-plus/icons-vue'
 import { getAppList, createApp, updateApp, deleteApp, resetAppSecret } from '@/api/app'
-import { getModuleTemplates, getAppModules, updateAppModule } from '@/api/module'
-import { getGroupedModules } from '@/config/moduleCategories'
+import { getAppModules, updateAppModule } from '@/api/module'
+import { moduleList, getGroupedModules, getAllModuleIds } from '@/config/moduleCategories'
 
 const router = useRouter()
 
@@ -225,11 +218,9 @@ const router = useRouter()
 const loading = ref(false)
 const appList = ref([])
 const searchKeyword = ref('')
-const moduleTemplates = ref([])
-const groupedModuleTemplates = ref([])
+const groupedModules = ref([])
 const currentPage = ref(1)
 const pageSize = ref(12)
-const total = ref(0)
 
 // 对话框
 const dialogVisible = ref(false)
@@ -258,7 +249,6 @@ const currentAppModules = ref([])
 // 缩短APP Key显示
 const shortenAppKey = (appKey) => {
   if (!appKey) return ''
-  // 取前8位 + ... + 后4位
   if (appKey.length <= 16) return appKey
   return `${appKey.slice(0, 8)}...${appKey.slice(-4)}`
 }
@@ -296,15 +286,9 @@ const fetchAppList = async () => {
   }
 }
 
-const fetchModuleTemplates = async () => {
-  try {
-    const res = await getModuleTemplates()
-    moduleTemplates.value = res.data || []
-    // 按分组整理模块
-    groupedModuleTemplates.value = getGroupedModules(moduleTemplates.value)
-  } catch (error) {
-    ElMessage.error('获取模块模板失败')
-  }
+const initModules = () => {
+  // 使用本地定义的9个大模块
+  groupedModules.value = getGroupedModules()
 }
 
 const handleSearch = () => {
@@ -323,8 +307,8 @@ const handleEdit = (app) => {
   isEdit.value = true
   Object.assign(formData, {
     id: app.id,
-    app_name: app.app_name,
-    app_key: app.app_key,
+    app_name: app.name,
+    app_key: app.app_id,
     package_name: app.package_name,
     description: app.description
   })
@@ -332,24 +316,7 @@ const handleEdit = (app) => {
 }
 
 const handleEnterApp = (app) => {
-  router.push(`/app/${app.id}/dashboard`)
-}
-
-const handleCommand = (command, app) => {
-  switch (command) {
-    case 'edit':
-      handleEdit(app)
-      break
-    case 'modules':
-      handleManageModules(app)
-      break
-    case 'reset':
-      handleResetSecret(app)
-      break
-    case 'delete':
-      handleDelete(app)
-      break
-  }
+  router.push(`/apps/${app.id}/config`)
 }
 
 const handleManageModules = async (app) => {
@@ -359,20 +326,29 @@ const handleManageModules = async (app) => {
     currentAppModules.value = res.data || []
     moduleDialogVisible.value = true
   } catch (error) {
-    ElMessage.error('获取模块列表失败')
+    // 如果获取失败，使用空数组
+    currentAppModules.value = []
+    moduleDialogVisible.value = true
   }
+}
+
+const isModuleEnabled = (moduleId) => {
+  return currentAppModules.value.some(m => m.source_module === moduleId && m.status === 1)
 }
 
 const handleToggleModule = async (module) => {
   try {
-    await updateAppModule(currentApp.value.id, module.module_code, {
-      is_enabled: module.is_enabled
+    const isEnabled = isModuleEnabled(module.id)
+    await updateAppModule(currentApp.value.id, module.id, {
+      is_enabled: !isEnabled
     })
     ElMessage.success('模块状态更新成功')
+    // 刷新模块列表
+    const res = await getAppModules(currentApp.value.id)
+    currentAppModules.value = res.data || []
     fetchAppList()
   } catch (error) {
     ElMessage.error('更新失败')
-    module.is_enabled = !module.is_enabled
   }
 }
 
@@ -393,7 +369,7 @@ const handleResetSecret = async (app) => {
 
 const handleDelete = async (app) => {
   try {
-    await ElMessageBox.confirm(`确定要删除APP "${app.app_name}" 吗？`, '提示', {
+    await ElMessageBox.confirm(`确定要删除APP "${app.name}" 吗？`, '提示', {
       type: 'warning'
     })
     await deleteApp(app.id)
@@ -445,37 +421,27 @@ const resetForm = () => {
 }
 
 // 模块选择方法
-const toggleModule = (moduleCode) => {
-  const index = formData.modules.indexOf(moduleCode)
+const toggleModule = (moduleId) => {
+  const index = formData.modules.indexOf(moduleId)
   if (index > -1) {
     formData.modules.splice(index, 1)
   } else {
-    formData.modules.push(moduleCode)
+    formData.modules.push(moduleId)
   }
 }
 
 const handleSelectAll = () => {
-  formData.modules = moduleTemplates.value.map(m => m.module_code)
+  formData.modules = getAllModuleIds()
 }
 
 const handleClearAll = () => {
   formData.modules = []
 }
 
-const handleSelectGroup = (group) => {
-  // 全选本组模块
-  const groupModuleCodes = group.modules.map(m => m.module_code)
-  groupModuleCodes.forEach(code => {
-    if (!formData.modules.includes(code)) {
-      formData.modules.push(code)
-    }
-  })
-}
-
 // 生命周期
 onMounted(() => {
   fetchAppList()
-  fetchModuleTemplates()
+  initModules()
 })
 </script>
 
@@ -507,10 +473,6 @@ onMounted(() => {
     @media (max-width: 768px) {
       font-size: 20px;
     }
-  }
-
-  @media (max-width: 768px) {
-    margin-bottom: 16px;
   }
 }
 
@@ -547,12 +509,12 @@ onMounted(() => {
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
 
       img {
         width: 100%;
         height: 100%;
         object-fit: cover;
-        border-radius: 8px;
       }
     }
 
@@ -571,7 +533,7 @@ onMounted(() => {
       }
 
       .app-key {
-        font-size: 12px;
+        font-size: 13px;
         color: #909399;
         font-family: monospace;
       }
@@ -579,34 +541,29 @@ onMounted(() => {
   }
 
   .app-card-body {
-    margin-bottom: 16px;
-
     .app-stats {
       display: flex;
-      gap: 16px;
+      gap: 20px;
       margin-bottom: 12px;
 
       .stat-item {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
         font-size: 14px;
         color: #606266;
-
-        .el-icon {
-          color: #909399;
-        }
       }
     }
 
     .app-description {
-      font-size: 13px;
+      font-size: 14px;
       color: #909399;
-      line-height: 1.6;
+      line-height: 1.5;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
+      min-height: 42px;
     }
   }
 
@@ -614,90 +571,46 @@ onMounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-top: 16px;
     padding-top: 16px;
     border-top: 1px solid #ebeef5;
   }
 }
 
 .create-card {
-  border: 2px dashed #dcdfe6;
-  background: #fafafa;
-
-  &:hover {
-    border-color: #409eff;
-    background: #f0f9ff;
-  }
-
   .create-card-content {
-    height: 240px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    height: 200px;
+    color: #909399;
 
     .create-text {
+      margin-top: 12px;
       font-size: 16px;
-      color: #606266;
-      font-weight: 500;
+    }
+  }
+
+  &:hover {
+    .create-card-content {
+      color: #409EFF;
     }
   }
 }
 
 .module-selection-container {
-  width: 100%;
-
-  .module-group {
-    margin-bottom: 24px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-
-    .module-group-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 16px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-radius: 8px;
-      margin-bottom: 16px;
-      color: #fff;
-
-      .group-icon {
-        font-size: 20px;
-      }
-
-      .group-name {
-        font-size: 15px;
-        font-weight: 600;
-      }
-
-      .group-desc {
-        flex: 1;
-        font-size: 12px;
-        opacity: 0.9;
-        margin-left: 8px;
-      }
-
-      .el-button {
-        color: #fff;
-        
-        &:hover {
-          background: rgba(255, 255, 255, 0.2);
-        }
-      }
-    }
-  }
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  overflow: hidden;
 
   .module-selection-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
+    gap: 16px;
     padding: 12px 16px;
     background: #f5f7fa;
-    border-radius: 4px;
+    border-bottom: 1px solid #e4e7ed;
 
     .selected-count {
       font-size: 14px;
@@ -706,13 +619,42 @@ onMounted(() => {
     }
   }
 
+  .module-group {
+    &:not(:last-child) {
+      border-bottom: 1px solid #e4e7ed;
+    }
+  }
+
+  .module-group-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+
+    .group-icon {
+      font-size: 20px;
+      margin-right: 8px;
+    }
+
+    .group-name {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .group-desc {
+      font-size: 13px;
+      margin-left: 12px;
+      opacity: 0.9;
+    }
+  }
+
   .module-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
-    max-height: 500px;
-    overflow-y: auto;
-    padding: 4px;
+    padding: 16px;
+    background: #fafafa;
 
     @media (max-width: 1200px) {
       grid-template-columns: repeat(2, 1fr);
@@ -748,6 +690,10 @@ onMounted(() => {
       align-items: center;
       justify-content: space-between;
       margin-bottom: 12px;
+
+      .module-icon {
+        font-size: 28px;
+      }
     }
 
     .module-card-body {
@@ -762,15 +708,59 @@ onMounted(() => {
         font-size: 13px;
         color: #606266;
         line-height: 1.5;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
       }
     }
   }
 }
-</style>
+
+.module-manage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .module-manage-card {
+    border: 2px solid #e4e7ed;
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.3s;
+    background: #fff;
+
+    &.is-enabled {
+      border-color: #67c23a;
+      background: #f0f9eb;
+    }
+
+    .module-manage-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+
+      .module-icon {
+        font-size: 24px;
+      }
+    }
+
+    .module-manage-body {
+      .module-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #303133;
+        margin-bottom: 4px;
+      }
+
+      .module-desc {
+        font-size: 12px;
+        color: #909399;
+        line-height: 1.4;
+      }
+    }
+  }
+}
 
 .pagination-container {
   display: flex;
@@ -778,172 +768,4 @@ onMounted(() => {
   margin-top: 32px;
   padding: 20px 0;
 }
-
-// 移动端适配
-@media (max-width: 768px) {
-  .app-list-container {
-    .page-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 12px;
-
-      .page-title {
-        font-size: 18px;
-      }
-
-      .el-input {
-        width: 100% !important;
-        margin-right: 0 !important;
-      }
-    }
-
-    .app-cards-container {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .app-card {
-    .app-card-header {
-      .app-logo {
-        width: 40px;
-        height: 40px;
-      }
-
-      .app-info {
-        .app-name {
-          font-size: 16px;
-        }
-
-        .app-key {
-          font-size: 12px;
-        }
-      }
-    }
-
-    .app-card-body {
-      .app-stats {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-
-        .stat-item {
-          font-size: 13px;
-        }
-      }
-
-      .app-description {
-        font-size: 13px;
-      }
-    }
-
-    .app-card-footer {
-      flex-direction: column;
-      gap: 8px;
-
-      .el-button {
-        width: 100%;
-      }
-
-      .el-button-group {
-        width: 100%;
-        display: flex;
-
-        .el-button {
-          flex: 1;
-        }
-      }
-    }
-  }
-
-  .create-card {
-    .create-card-content {
-      height: 150px;
-
-      .el-icon {
-        font-size: 36px !important;
-      }
-
-      .create-text {
-        font-size: 14px;
-      }
-    }
-  }
-
-  // 对话框移动端适配
-  :deep(.el-dialog) {
-    width: 95% !important;
-    max-width: 95% !important;
-    margin: 10px auto !important;
-
-    .el-dialog__body {
-      padding: 16px;
-    }
-
-    .el-form-item__label {
-      width: 100% !important;
-      text-align: left;
-      margin-bottom: 8px;
-    }
-
-    .el-form-item__content {
-      margin-left: 0 !important;
-    }
-  }
-
-  .module-selection-container {
-    .module-group-header {
-      flex-wrap: wrap;
-      padding: 10px 12px;
-
-      .group-desc {
-        width: 100%;
-        margin-left: 0;
-        margin-top: 4px;
-      }
-    }
-
-    .module-grid {
-      grid-template-columns: 1fr !important;
-      max-height: 300px;
-    }
-
-    .module-card {
-      padding: 12px;
-
-      .module-card-header {
-        .el-icon {
-          font-size: 24px !important;
-        }
-      }
-
-      .module-card-body {
-        .module-name {
-          font-size: 14px;
-        }
-
-        .module-desc {
-          font-size: 12px;
-        }
-      }
-    }
-  }
-
-  .pagination-container {
-    margin-top: 20px;
-    padding: 12px 0;
-
-    :deep(.el-pagination) {
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 8px;
-
-      .el-pagination__sizes {
-        margin: 0;
-      }
-
-      .el-pagination__jump {
-        margin-left: 0;
-      }
-    }
-  }
-}
+</style>

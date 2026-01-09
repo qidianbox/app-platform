@@ -22,7 +22,7 @@ type Admin struct {
 // App 应用模型
 type App struct {
 	ID          uint           `gorm:"primarykey" json:"id"`
-	Name        string         `gorm:"size:100" json:"name"`
+	Name        string         `gorm:"size:100" json:"name" binding:"-"`
 	AppID       string         `gorm:"uniqueIndex;size:50" json:"app_id"`
 	AppSecret   string         `gorm:"size:100" json:"app_secret"`
 	PackageName string         `gorm:"size:100" json:"package_name"`
@@ -54,14 +54,15 @@ type ModuleTemplate struct {
 
 // AppModule APP启用的模块
 type AppModule struct {
-	ID         uint           `gorm:"primarykey" json:"id"`
-	AppID      uint           `gorm:"index" json:"app_id"`
-	ModuleCode string         `gorm:"size:50" json:"module_code"`
-	Config     string         `gorm:"type:json" json:"config"`
-	Status     int            `gorm:"default:1" json:"status"`
-	CreatedAt  time.Time      `json:"created_at"`
-	UpdatedAt  time.Time      `json:"updated_at"`
-	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
+	ID           uint           `gorm:"primarykey" json:"id"`
+	AppID        uint           `gorm:"index" json:"app_id"`
+	ModuleCode   string         `gorm:"size:50" json:"module_code"`
+	SourceModule string         `gorm:"size:50" json:"source_module"`
+	Config       string         `gorm:"type:json" json:"config"`
+	Status       int            `gorm:"default:1" json:"status"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 // ModuleConfigHistory 模块配置历史

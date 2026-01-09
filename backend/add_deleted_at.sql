@@ -1,0 +1,1 @@
+ALTER TABLE app_modules ADD COLUMN deleted_at DATETIME DEFAULT NULL;

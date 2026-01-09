@@ -76,7 +76,9 @@ func List(c *gin.Context) {
 
 func Create(c *gin.Context) {
 	var req struct {
-		Name        string   `json:"name" binding:"required"`
+		Name        string   `json:"name"`
+		AppName     string   `json:"app_name"`
+		AppKey      string   `json:"app_key"`
 		PackageName string   `json:"package_name"`
 		Description string   `json:"description"`
 		Icon        string   `json:"icon"`
@@ -88,8 +90,18 @@ func Create(c *gin.Context) {
 		return
 	}
 	
+	// 支持两种字段名: name 或 app_name
+	appName := req.Name
+	if appName == "" {
+		appName = req.AppName
+	}
+	if appName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name or app_name is required"})
+		return
+	}
+	
 	app := model.App{
-		Name:        req.Name,
+		Name:        appName,
 		AppID:       generateAppID(),
 		AppSecret:   generateAppSecret(),
 		PackageName: req.PackageName,
@@ -103,13 +115,14 @@ func Create(c *gin.Context) {
 		return
 	}
 	
-	// 启用选中的模块
-	for _, moduleCode := range req.Modules {
+	// 启用选中的模块（现在modules是大模块ID，如user_management, message_center等）
+	for _, sourceModule := range req.Modules {
 		appModule := model.AppModule{
-			AppID:      app.ID,
-			ModuleCode: moduleCode,
-			Config:     "{}",
-			Status:     1,
+			AppID:        app.ID,
+			ModuleCode:   sourceModule,
+			SourceModule: sourceModule,
+			Config:       "{}",
+			Status:       1,
 		}
 		database.GetDB().Create(&appModule)
 	}
