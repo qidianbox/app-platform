@@ -41,15 +41,12 @@ func Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"token": token,
-			"admin": gin.H{
-				"id":       admin.ID,
-				"username": admin.Username,
-				"nickname": admin.Nickname,
-				"avatar":   admin.Avatar,
-			},
+		"token": token,
+		"user": gin.H{
+			"id":       admin.ID,
+			"username": admin.Username,
+			"nickname": admin.Nickname,
+			"avatar":   admin.Avatar,
 		},
 	})
 }
