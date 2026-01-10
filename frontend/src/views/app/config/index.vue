@@ -2,25 +2,39 @@
   <div class="app-detail">
     <!-- 顶部导航栏 -->
     <div class="top-header">
-      <div class="header-left">
+      <!-- 左侧：Logo + APP信息 -->
+      <div class="header-logo">
         <el-button class="back-btn" text @click="$router.push('/apps')">
           <el-icon><ArrowLeft /></el-icon>
         </el-button>
         <div class="app-icon">
           <span>{{ appInfo.name?.charAt(0) || '应' }}</span>
         </div>
-        <div class="header-info">
-          <div class="app-name-row">
-            <span class="app-name">{{ appInfo.name || '加载中...' }}</span>
-            <span class="app-id">{{ appInfo.app_id || '' }}</span>
-          </div>
-          <!-- Tab切换 -->
-          <el-tabs v-model="activeTab" class="header-tabs">
-            <el-tab-pane label="工作台" name="workspace" />
-            <el-tab-pane label="配置中心" name="config" />
-          </el-tabs>
+        <div class="app-info">
+          <span class="app-name">{{ appInfo.name || '加载中...' }}</span>
+          <span class="app-id">{{ appInfo.app_id || '' }}</span>
         </div>
       </div>
+      
+      <!-- 中间：工作台 | 配置中心 Tab -->
+      <div class="header-nav">
+        <div 
+          class="nav-item" 
+          :class="{ active: activeTab === 'workspace' }"
+          @click="activeTab = 'workspace'"
+        >
+          工作台
+        </div>
+        <div 
+          class="nav-item" 
+          :class="{ active: activeTab === 'config' }"
+          @click="activeTab = 'config'"
+        >
+          配置中心
+        </div>
+      </div>
+      
+      <!-- 右侧：空白区域 + 用户信息 -->
       <div class="header-right">
         <el-dropdown>
           <el-button text class="user-btn">
@@ -1401,9 +1415,10 @@ onMounted(() => {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   color: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: relative;
 }
 
-.header-left {
+.header-logo {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1427,16 +1442,10 @@ onMounted(() => {
     font-size: 16px;
   }
   
-  .header-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  
-  .app-name-row {
+  .app-info {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
   }
   
   .app-name {
@@ -1451,36 +1460,34 @@ onMounted(() => {
     padding: 2px 8px;
     border-radius: 4px;
   }
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   
-  .header-tabs {
-    :deep(.el-tabs__header) {
-      margin: 0;
-      border: none;
+  .nav-item {
+    padding: 8px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+    
+    &:hover {
+      color: white;
+      background: rgba(255, 255, 255, 0.1);
     }
     
-    :deep(.el-tabs__nav-wrap::after) {
-      display: none;
-    }
-    
-    :deep(.el-tabs__item) {
-      color: rgba(255, 255, 255, 0.7);
-      padding: 0 12px;
-      height: 32px;
-      line-height: 32px;
-      font-size: 14px;
-      
-      &.is-active {
-        color: white;
-        font-weight: 600;
-      }
-      
-      &:hover {
-        color: white;
-      }
-    }
-    
-    :deep(.el-tabs__active-bar) {
-      background-color: white;
+    &.active {
+      color: white;
+      background: rgba(255, 255, 255, 0.2);
+      font-weight: 600;
     }
   }
 }
