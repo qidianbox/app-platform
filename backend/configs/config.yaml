@@ -8,10 +8,10 @@ server:
 
 database:
   driver: mysql
-  host: localhost
+  host: rm-bp13s51058fu3r061.mysql.rds.aliyuncs.com
   port: 3306
-  username: root
-  password: root
+  username: app_platform
+  password: App@Platform123
   database: app_platform
   charset: utf8mb4
   parse_time: true
