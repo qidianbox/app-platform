@@ -8,15 +8,15 @@
           <el-icon><ArrowLeft /></el-icon>
         </el-button>
         <div class="app-icon">
-          <span>{{ appInfo.name?.charAt(0) || '应' }}</span>
+          <span>拓</span>
         </div>
         <div class="app-info">
-          <span class="app-name">{{ appInfo.name || '加载中...' }}</span>
+          <span class="app-name">拓客APP中台</span>
           <span class="app-id">{{ appInfo.app_id || '' }}</span>
         </div>
       </div>
       
-      <!-- 中间：工作台 | 配置中心 Tab -->
+      <!-- 右侧：工作台 | 配置中心 Tab -->
       <div class="header-nav">
         <div 
           class="nav-item" 
@@ -32,21 +32,6 @@
         >
           配置中心
         </div>
-      </div>
-      
-      <!-- 右侧：空白区域 + 用户信息 -->
-      <div class="header-right">
-        <el-dropdown>
-          <el-button text class="user-btn">
-            <el-avatar :size="32">{{ adminName?.charAt(0) || 'A' }}</el-avatar>
-            <span class="admin-name">{{ adminName }}</span>
-          </el-button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item @click="$router.push('/apps')">返回APP列表</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
       </div>
     </div>
 
@@ -1409,13 +1394,11 @@ onMounted(() => {
 .top-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 0 24px;
   height: 60px;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   color: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  position: relative;
 }
 
 .header-logo {
@@ -1465,13 +1448,11 @@ onMounted(() => {
 .header-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  gap: 4px;
+  margin-left: auto;
   
   .nav-item {
-    padding: 8px 24px;
+    padding: 8px 20px;
     font-size: 14px;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.7);
@@ -1486,22 +1467,9 @@ onMounted(() => {
     
     &.active {
       color: white;
-      background: rgba(255, 255, 255, 0.2);
+      background: #409eff;
       font-weight: 600;
     }
-  }
-}
-
-.header-right {
-  .user-btn {
-    color: white;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  
-  .admin-name {
-    font-size: 14px;
   }
 }
 
