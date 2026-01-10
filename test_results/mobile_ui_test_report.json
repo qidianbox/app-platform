@@ -1,0 +1,1129 @@
+{
+  "title": "移动端UI兼容性测试报告",
+  "generated_at": "2026-01-10T13:22:35.318802",
+  "base_url": "http://localhost:5173",
+  "summary": {
+    "total_tests": 18,
+    "devices_tested": 6,
+    "pages_tested": 3,
+    "total_checks": 126,
+    "passed_checks": 108,
+    "failed_checks": 18,
+    "pass_rate": 85.71
+  },
+  "device_summary": {
+    "iPhone_SE": {
+      "passed": 18,
+      "failed": 3,
+      "total": 21
+    },
+    "iPhone_12": {
+      "passed": 18,
+      "failed": 3,
+      "total": 21
+    },
+    "iPhone_14_Pro_Max": {
+      "passed": 18,
+      "failed": 3,
+      "total": 21
+    },
+    "iPad_Mini": {
+      "passed": 18,
+      "failed": 3,
+      "total": 21
+    },
+    "Android_Phone": {
+      "passed": 18,
+      "failed": 3,
+      "total": 21
+    },
+    "Android_Tablet": {
+      "passed": 18,
+      "failed": 3,
+      "total": 21
+    }
+  },
+  "page_summary": {
+    "登录页": {
+      "passed": 36,
+      "failed": 6,
+      "total": 42
+    },
+    "APP列表": {
+      "passed": 36,
+      "failed": 6,
+      "total": 42
+    },
+    "APP详情": {
+      "passed": 36,
+      "failed": 6,
+      "total": 42
+    }
+  },
+  "issues": [
+    {
+      "device": "iPhone_SE",
+      "page": "登录页",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "iPhone_SE",
+      "page": "APP列表",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "iPhone_SE",
+      "page": "APP详情",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "iPhone_12",
+      "page": "登录页",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "iPhone_12",
+      "page": "APP列表",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "iPhone_12",
+      "page": "APP详情",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "iPhone_14_Pro_Max",
+      "page": "登录页",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "iPhone_14_Pro_Max",
+      "page": "APP列表",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "iPhone_14_Pro_Max",
+      "page": "APP详情",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "iPad_Mini",
+      "page": "登录页",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "iPad_Mini",
+      "page": "APP列表",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "iPad_Mini",
+      "page": "APP详情",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "Android_Phone",
+      "page": "登录页",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "Android_Phone",
+      "page": "APP列表",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "Android_Phone",
+      "page": "APP详情",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "Android_Tablet",
+      "page": "登录页",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "Android_Tablet",
+      "page": "APP列表",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    },
+    {
+      "device": "Android_Tablet",
+      "page": "APP详情",
+      "check": "导航可用",
+      "message": "未找到可用的导航元素",
+      "details": null
+    }
+  ],
+  "results": [
+    {
+      "device": "iPhone_SE",
+      "page": "登录页",
+      "path": "/",
+      "viewport": "375x667",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/iPhone_SE_登录页_20260110_132149.png",
+      "timestamp": "2026-01-10T13:21:47.075440"
+    },
+    {
+      "device": "iPhone_SE",
+      "page": "APP列表",
+      "path": "/apps",
+      "viewport": "375x667",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/iPhone_SE_APP列表_20260110_132151.png",
+      "timestamp": "2026-01-10T13:21:49.630642"
+    },
+    {
+      "device": "iPhone_SE",
+      "page": "APP详情",
+      "path": "/apps/1/workspace",
+      "viewport": "375x667",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/iPhone_SE_APP详情_20260110_132154.png",
+      "timestamp": "2026-01-10T13:21:52.050517"
+    },
+    {
+      "device": "iPhone_12",
+      "page": "登录页",
+      "path": "/",
+      "viewport": "390x844",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/iPhone_12_登录页_20260110_132156.png",
+      "timestamp": "2026-01-10T13:21:54.742261"
+    },
+    {
+      "device": "iPhone_12",
+      "page": "APP列表",
+      "path": "/apps",
+      "viewport": "390x844",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/iPhone_12_APP列表_20260110_132159.png",
+      "timestamp": "2026-01-10T13:21:57.380283"
+    },
+    {
+      "device": "iPhone_12",
+      "page": "APP详情",
+      "path": "/apps/1/workspace",
+      "viewport": "390x844",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/iPhone_12_APP详情_20260110_132201.png",
+      "timestamp": "2026-01-10T13:21:59.883776"
+    },
+    {
+      "device": "iPhone_14_Pro_Max",
+      "page": "登录页",
+      "path": "/",
+      "viewport": "430x932",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/iPhone_14_Pro_Max_登录页_20260110_132204.png",
+      "timestamp": "2026-01-10T13:22:02.533878"
+    },
+    {
+      "device": "iPhone_14_Pro_Max",
+      "page": "APP列表",
+      "path": "/apps",
+      "viewport": "430x932",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/iPhone_14_Pro_Max_APP列表_20260110_132207.png",
+      "timestamp": "2026-01-10T13:22:05.120989"
+    },
+    {
+      "device": "iPhone_14_Pro_Max",
+      "page": "APP详情",
+      "path": "/apps/1/workspace",
+      "viewport": "430x932",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/iPhone_14_Pro_Max_APP详情_20260110_132209.png",
+      "timestamp": "2026-01-10T13:22:07.625414"
+    },
+    {
+      "device": "iPad_Mini",
+      "page": "登录页",
+      "path": "/",
+      "viewport": "768x1024",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/iPad_Mini_登录页_20260110_132212.png",
+      "timestamp": "2026-01-10T13:22:10.417237"
+    },
+    {
+      "device": "iPad_Mini",
+      "page": "APP列表",
+      "path": "/apps",
+      "viewport": "768x1024",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/iPad_Mini_APP列表_20260110_132215.png",
+      "timestamp": "2026-01-10T13:22:13.275645"
+    },
+    {
+      "device": "iPad_Mini",
+      "page": "APP详情",
+      "path": "/apps/1/workspace",
+      "viewport": "768x1024",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/iPad_Mini_APP详情_20260110_132218.png",
+      "timestamp": "2026-01-10T13:22:15.992119"
+    },
+    {
+      "device": "Android_Phone",
+      "page": "登录页",
+      "path": "/",
+      "viewport": "360x800",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/Android_Phone_登录页_20260110_132221.png",
+      "timestamp": "2026-01-10T13:22:18.956347"
+    },
+    {
+      "device": "Android_Phone",
+      "page": "APP列表",
+      "path": "/apps",
+      "viewport": "360x800",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/Android_Phone_APP列表_20260110_132223.png",
+      "timestamp": "2026-01-10T13:22:21.507579"
+    },
+    {
+      "device": "Android_Phone",
+      "page": "APP详情",
+      "path": "/apps/1/workspace",
+      "viewport": "360x800",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/Android_Phone_APP详情_20260110_132226.png",
+      "timestamp": "2026-01-10T13:22:23.948482"
+    },
+    {
+      "device": "Android_Tablet",
+      "page": "登录页",
+      "path": "/",
+      "viewport": "800x1280",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/Android_Tablet_登录页_20260110_132228.png",
+      "timestamp": "2026-01-10T13:22:26.642371"
+    },
+    {
+      "device": "Android_Tablet",
+      "page": "APP列表",
+      "path": "/apps",
+      "viewport": "800x1280",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/Android_Tablet_APP列表_20260110_132231.png",
+      "timestamp": "2026-01-10T13:22:29.675500"
+    },
+    {
+      "device": "Android_Tablet",
+      "page": "APP详情",
+      "path": "/apps/1/workspace",
+      "viewport": "800x1280",
+      "checks": [
+        {
+          "passed": true,
+          "message": "页面加载成功",
+          "name": "页面可访问",
+          "type": "page_load"
+        },
+        {
+          "passed": true,
+          "message": "无水平滚动",
+          "name": "无水平滚动",
+          "type": "no_horizontal_scroll"
+        },
+        {
+          "passed": true,
+          "message": "所有文字大小>=12px",
+          "name": "文字可读",
+          "type": "text_readable"
+        },
+        {
+          "passed": true,
+          "message": "所有可点击元素尺寸>=44x44px",
+          "name": "按钮可点击",
+          "type": "buttons_clickable"
+        },
+        {
+          "passed": false,
+          "message": "未找到可用的导航元素",
+          "name": "导航可用",
+          "type": "navigation_usable"
+        },
+        {
+          "passed": true,
+          "message": "表单元素尺寸合适",
+          "name": "表单可用",
+          "type": "forms_usable"
+        },
+        {
+          "passed": true,
+          "message": "所有图片适配视口",
+          "name": "图片适配",
+          "type": "images_responsive"
+        }
+      ],
+      "screenshot": "/home/ubuntu/app-platform/test_results/screenshots/Android_Tablet_APP详情_20260110_132234.png",
+      "timestamp": "2026-01-10T13:22:32.508671"
+    }
+  ]
+}
