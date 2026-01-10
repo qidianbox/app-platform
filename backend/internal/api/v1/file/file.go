@@ -2,10 +2,11 @@ package file
 
 import (
 	"app-platform-backend/internal/model"
+	"app-platform-backend/internal/response"
+	"app-platform-backend/internal/validator"
 	"crypto/md5"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -18,6 +19,24 @@ import (
 var db *gorm.DB
 var uploadDir = "/tmp/uploads"
 
+// 允许的文件类型
+var allowedMimeTypes = map[string]bool{
+	"image/jpeg":      true,
+	"image/png":       true,
+	"image/gif":       true,
+	"image/webp":      true,
+	"application/pdf": true,
+	"application/zip": true,
+	"text/plain":      true,
+	"text/csv":        true,
+	"application/json": true,
+	"application/vnd.ms-excel": true,
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": true,
+}
+
+// 最大文件大小 (50MB)
+const maxFileSize = 50 * 1024 * 1024
+
 func InitDB(database *gorm.DB) {
 	db = database
 	// 确保上传目录存在
@@ -28,49 +47,71 @@ func InitDB(database *gorm.DB) {
 func Upload(c *gin.Context) {
 	appIDStr := c.PostForm("app_id")
 	if appIDStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "app_id is required"})
+		response.ParamError(c, "app_id 不能为空")
 		return
 	}
 
-	appID, _ := strconv.ParseUint(appIDStr, 10, 32)
+	appID, err := strconv.ParseUint(appIDStr, 10, 32)
+	if err != nil {
+		response.ParamError(c, "无效的 app_id")
+		return
+	}
 
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "No file uploaded"})
+		response.ParamError(c, "请选择要上传的文件")
 		return
 	}
 	defer file.Close()
+
+	// 验证文件大小
+	if header.Size > maxFileSize {
+		response.ParamError(c, fmt.Sprintf("文件大小不能超过 %dMB", maxFileSize/1024/1024))
+		return
+	}
+
+	// 获取MIME类型
+	mimeType := header.Header.Get("Content-Type")
+	if mimeType == "" {
+		mimeType = "application/octet-stream"
+	}
+
+	// 验证文件类型（可选，根据需求开启）
+	// if !allowedMimeTypes[mimeType] {
+	// 	response.ParamError(c, "不支持的文件类型")
+	// 	return
+	// }
 
 	// 生成唯一文件名
 	ext := filepath.Ext(header.Filename)
 	hash := md5.New()
 	io.Copy(hash, file)
 	file.Seek(0, 0)
-	
+
 	timestamp := time.Now().UnixNano()
 	newFilename := fmt.Sprintf("%x_%d%s", hash.Sum(nil), timestamp, ext)
-	
+
 	// 按APP和日期组织目录
 	dateDir := time.Now().Format("2006/01/02")
 	fullDir := filepath.Join(uploadDir, fmt.Sprintf("%d", appID), dateDir)
-	os.MkdirAll(fullDir, 0755)
-	
+	if err := os.MkdirAll(fullDir, 0755); err != nil {
+		response.ServerError(c, "创建目录失败")
+		return
+	}
+
 	filePath := filepath.Join(fullDir, newFilename)
-	
+
 	// 保存文件
 	out, err := os.Create(filePath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to save file"})
+		response.ServerError(c, "保存文件失败")
 		return
 	}
 	defer out.Close()
-	
-	io.Copy(out, file)
 
-	// 获取MIME类型
-	mimeType := header.Header.Get("Content-Type")
-	if mimeType == "" {
-		mimeType = "application/octet-stream"
+	if _, err := io.Copy(out, file); err != nil {
+		response.ServerError(c, "写入文件失败")
+		return
 	}
 
 	// 保存到数据库
@@ -83,37 +124,37 @@ func Upload(c *gin.Context) {
 	}
 
 	if err := db.Create(&fileRecord).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to save file record"})
+		// 删除已上传的文件
+		os.Remove(filePath)
+		response.DBError(c, err)
 		return
 	}
 
 	// 生成访问URL
 	fileURL := fmt.Sprintf("/api/v1/files/download/%d", fileRecord.ID)
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "File uploaded successfully",
-		"data": gin.H{
-			"id":        fileRecord.ID,
-			"filename":  header.Filename,
-			"size":      header.Size,
-			"mime_type": mimeType,
-			"url":       fileURL,
-		},
-	})
+	response.SuccessWithMessage(c, gin.H{
+		"id":        fileRecord.ID,
+		"filename":  header.Filename,
+		"size":      header.Size,
+		"mime_type": mimeType,
+		"url":       fileURL,
+	}, "文件上传成功")
 }
 
 // List 文件列表
 func List(c *gin.Context) {
 	appID := c.Query("app_id")
 	mimeType := c.Query("mime_type")
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	size, _ := strconv.Atoi(c.DefaultQuery("size", "20"))
+	page, size := validator.ParsePagination(c.DefaultQuery("page", "1"), c.DefaultQuery("size", "20"))
 
 	if appID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "app_id is required"})
+		response.ParamError(c, "app_id 不能为空")
 		return
 	}
+
+	// 验证分页参数
+	page, size = validator.ValidatePagination(page, size)
 
 	query := db.Model(&model.File{}).Where("app_id = ?", appID)
 
@@ -122,11 +163,17 @@ func List(c *gin.Context) {
 	}
 
 	var total int64
-	query.Count(&total)
+	if err := query.Count(&total).Error; err != nil {
+		response.DBError(c, err)
+		return
+	}
 
 	var files []model.File
 	offset := (page - 1) * size
-	query.Offset(offset).Limit(size).Order("created_at DESC").Find(&files)
+	if err := query.Offset(offset).Limit(size).Order("created_at DESC").Find(&files).Error; err != nil {
+		response.DBError(c, err)
+		return
+	}
 
 	// 添加URL
 	var result []gin.H
@@ -141,41 +188,36 @@ func List(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"list":  result,
-			"total": total,
-			"page":  page,
-			"size":  size,
-		},
-	})
+	response.PageSuccess(c, result, total, page, size)
 }
 
 // Detail 文件详情
 func Detail(c *gin.Context) {
 	id := c.Param("id")
 
-	var file model.File
-	if err := db.First(&file, id).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "File not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to query file"})
+	// 验证ID
+	if _, err := validator.ValidateID(id); err != nil {
+		response.ParamError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"id":         file.ID,
-			"filename":   file.Filename,
-			"file_size":  file.FileSize,
-			"mime_type":  file.MimeType,
-			"url":        fmt.Sprintf("/api/v1/files/download/%d", file.ID),
-			"created_at": file.CreatedAt,
-		},
+	var file model.File
+	if err := db.First(&file, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			response.NotFound(c, "文件不存在")
+			return
+		}
+		response.DBError(c, err)
+		return
+	}
+
+	response.Success(c, gin.H{
+		"id":         file.ID,
+		"filename":   file.Filename,
+		"file_size":  file.FileSize,
+		"mime_type":  file.MimeType,
+		"url":        fmt.Sprintf("/api/v1/files/download/%d", file.ID),
+		"created_at": file.CreatedAt,
 	})
 }
 
@@ -183,19 +225,25 @@ func Detail(c *gin.Context) {
 func Download(c *gin.Context) {
 	id := c.Param("id")
 
+	// 验证ID
+	if _, err := validator.ValidateID(id); err != nil {
+		response.ParamError(c, err.Error())
+		return
+	}
+
 	var file model.File
 	if err := db.First(&file, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "File not found"})
+			response.NotFound(c, "文件不存在")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to query file"})
+		response.DBError(c, err)
 		return
 	}
 
 	// 检查文件是否存在
 	if _, err := os.Stat(file.FilePath); os.IsNotExist(err) {
-		c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "File not found on disk"})
+		response.NotFound(c, "文件已被删除")
 		return
 	}
 
@@ -208,13 +256,19 @@ func Download(c *gin.Context) {
 func Delete(c *gin.Context) {
 	id := c.Param("id")
 
+	// 验证ID
+	if _, err := validator.ValidateID(id); err != nil {
+		response.ParamError(c, err.Error())
+		return
+	}
+
 	var file model.File
 	if err := db.First(&file, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "File not found"})
+			response.NotFound(c, "文件不存在")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to query file"})
+		response.DBError(c, err)
 		return
 	}
 
@@ -222,12 +276,12 @@ func Delete(c *gin.Context) {
 	os.Remove(file.FilePath)
 
 	// 删除数据库记录
-	db.Delete(&file)
+	if err := db.Delete(&file).Error; err != nil {
+		response.DBError(c, err)
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "File deleted successfully",
-	})
+	response.SuccessWithMessage(c, nil, "文件删除成功")
 }
 
 // BatchDelete 批量删除文件
@@ -237,12 +291,25 @@ func BatchDelete(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": err.Error()})
+		response.ParamError(c, "参数错误: "+err.Error())
+		return
+	}
+
+	if len(req.IDs) == 0 {
+		response.ParamError(c, "请选择要删除的文件")
+		return
+	}
+
+	if len(req.IDs) > 100 {
+		response.ParamError(c, "单次最多删除100个文件")
 		return
 	}
 
 	var files []model.File
-	db.Find(&files, req.IDs)
+	if err := db.Find(&files, req.IDs).Error; err != nil {
+		response.DBError(c, err)
+		return
+	}
 
 	// 删除物理文件
 	for _, file := range files {
@@ -251,21 +318,21 @@ func BatchDelete(c *gin.Context) {
 
 	// 删除数据库记录
 	result := db.Delete(&model.File{}, req.IDs)
+	if result.Error != nil {
+		response.DBError(c, result.Error)
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Files deleted successfully",
-		"data": gin.H{
-			"affected": result.RowsAffected,
-		},
-	})
+	response.SuccessWithMessage(c, gin.H{
+		"affected": result.RowsAffected,
+	}, "文件批量删除成功")
 }
 
 // Stats 文件统计
 func Stats(c *gin.Context) {
 	appID := c.Query("app_id")
 	if appID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "app_id is required"})
+		response.ParamError(c, "app_id 不能为空")
 		return
 	}
 
@@ -291,13 +358,10 @@ func Stats(c *gin.Context) {
 		Group("SUBSTRING_INDEX(mime_type, '/', 1)").
 		Scan(&typeStats)
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"total":       total,
-			"total_size":  totalSize,
-			"today_count": todayCount,
-			"type_stats":  typeStats,
-		},
+	response.Success(c, gin.H{
+		"total":       total,
+		"total_size":  totalSize,
+		"today_count": todayCount,
+		"type_stats":  typeStats,
 	})
 }

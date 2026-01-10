@@ -3,6 +3,7 @@ package validator
 import (
 	"errors"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -207,4 +208,16 @@ func ValidatePagination(page, size int) (int, int) {
 		size = 100
 	}
 	return page, size
+}
+
+// ParsePagination 解析分页参数字符串
+func ParsePagination(pageStr, sizeStr string) (int, int) {
+	page, _ := strconv.Atoi(pageStr)
+	size, _ := strconv.Atoi(sizeStr)
+	return page, size
+}
+
+// ValidateURL 验证URL格式（导出版本）
+func ValidateURL(url string) error {
+	return validateURL(url)
 }

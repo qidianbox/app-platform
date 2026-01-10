@@ -2,8 +2,9 @@ package monitor
 
 import (
 	"app-platform-backend/internal/model"
+	"app-platform-backend/internal/response"
+	"app-platform-backend/internal/validator"
 	"encoding/json"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -20,14 +21,20 @@ func InitDB(database *gorm.DB) {
 // ReportMetric 上报监控指标
 func ReportMetric(c *gin.Context) {
 	var req struct {
-		AppID       uint               `json:"app_id" binding:"required"`
-		MetricName  string             `json:"metric_name" binding:"required"`
-		MetricValue float64            `json:"metric_value" binding:"required"`
-		Tags        map[string]string  `json:"tags"`
+		AppID       uint              `json:"app_id" binding:"required"`
+		MetricName  string            `json:"metric_name" binding:"required"`
+		MetricValue float64           `json:"metric_value" binding:"required"`
+		Tags        map[string]string `json:"tags"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": err.Error()})
+		response.ParamError(c, "参数错误: "+err.Error())
+		return
+	}
+
+	// 验证指标名称
+	if len(req.MetricName) < 1 || len(req.MetricName) > 100 {
+		response.ParamError(c, "指标名称长度应在1-100个字符之间")
 		return
 	}
 
@@ -46,17 +53,14 @@ func ReportMetric(c *gin.Context) {
 	}
 
 	if err := db.Create(&metric).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to report metric"})
+		response.DBError(c, err)
 		return
 	}
 
 	// 检查是否触发告警
 	checkAlerts(req.AppID, req.MetricName, req.MetricValue)
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Metric reported successfully",
-	})
+	response.SuccessWithMessage(c, nil, "指标上报成功")
 }
 
 // 检查告警规则
@@ -99,9 +103,12 @@ func Metrics(c *gin.Context) {
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "100"))
 
 	if appID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "app_id is required"})
+		response.ParamError(c, "app_id 不能为空")
 		return
 	}
+
+	// 验证分页参数
+	page, size = validator.ValidatePagination(page, size)
 
 	query := db.Model(&model.MonitorMetric{}).Where("app_id = ?", appID)
 
@@ -120,17 +127,12 @@ func Metrics(c *gin.Context) {
 
 	var metrics []model.MonitorMetric
 	offset := (page - 1) * size
-	query.Offset(offset).Limit(size).Order("created_at DESC").Find(&metrics)
+	if err := query.Offset(offset).Limit(size).Order("created_at DESC").Find(&metrics).Error; err != nil {
+		response.DBError(c, err)
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"list":  metrics,
-			"total": total,
-			"page":  page,
-			"size":  size,
-		},
-	})
+	response.PageSuccess(c, metrics, total, page, size)
 }
 
 // MetricStats 指标统计
@@ -139,7 +141,7 @@ func MetricStats(c *gin.Context) {
 	metricName := c.Query("metric_name")
 
 	if appID == "" || metricName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "app_id and metric_name are required"})
+		response.ParamError(c, "app_id 和 metric_name 不能为空")
 		return
 	}
 
@@ -150,10 +152,13 @@ func MetricStats(c *gin.Context) {
 		Count int64   `json:"count"`
 	}
 
-	db.Model(&model.MonitorMetric{}).
+	if err := db.Model(&model.MonitorMetric{}).
 		Where("app_id = ? AND metric_name = ?", appID, metricName).
 		Select("AVG(metric_value) as avg, MAX(metric_value) as max, MIN(metric_value) as min, COUNT(*) as count").
-		Scan(&stats)
+		Scan(&stats).Error; err != nil {
+		response.DBError(c, err)
+		return
+	}
 
 	// 获取最近的趋势数据
 	var trends []struct {
@@ -167,15 +172,12 @@ func MetricStats(c *gin.Context) {
 		Limit(100).
 		Scan(&trends)
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"avg":    stats.Avg,
-			"max":    stats.Max,
-			"min":    stats.Min,
-			"count":  stats.Count,
-			"trends": trends,
-		},
+	response.Success(c, gin.H{
+		"avg":    stats.Avg,
+		"max":    stats.Max,
+		"min":    stats.Min,
+		"count":  stats.Count,
+		"trends": trends,
 	})
 }
 
@@ -185,6 +187,9 @@ func Alerts(c *gin.Context) {
 	status := c.Query("status")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "20"))
+
+	// 验证分页参数
+	page, size = validator.ValidatePagination(page, size)
 
 	query := db.Model(&model.MonitorAlert{})
 	if appID != "" {
@@ -199,17 +204,12 @@ func Alerts(c *gin.Context) {
 
 	var alerts []model.MonitorAlert
 	offset := (page - 1) * size
-	query.Offset(offset).Limit(size).Order("created_at DESC").Find(&alerts)
+	if err := query.Offset(offset).Limit(size).Order("created_at DESC").Find(&alerts).Error; err != nil {
+		response.DBError(c, err)
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"list":  alerts,
-			"total": total,
-			"page":  page,
-			"size":  size,
-		},
-	})
+	response.PageSuccess(c, alerts, total, page, size)
 }
 
 // CreateAlert 创建告警规则
@@ -223,14 +223,20 @@ func CreateAlert(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": err.Error()})
+		response.ParamError(c, "参数错误: "+err.Error())
+		return
+	}
+
+	// 验证告警名称长度
+	if len(req.AlertName) < 2 || len(req.AlertName) > 100 {
+		response.ParamError(c, "告警名称长度应在2-100个字符之间")
 		return
 	}
 
 	// 验证条件
 	validConditions := map[string]bool{"gt": true, "gte": true, "lt": true, "lte": true, "eq": true}
 	if !validConditions[req.Condition] {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "Invalid condition. Use: gt, gte, lt, lte, eq"})
+		response.ParamError(c, "无效的条件，请使用: gt, gte, lt, lte, eq")
 		return
 	}
 
@@ -245,28 +251,30 @@ func CreateAlert(c *gin.Context) {
 	}
 
 	if err := db.Create(&alert).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to create alert"})
+		response.DBError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"data":    alert,
-		"message": "Alert created successfully",
-	})
+	response.SuccessWithMessage(c, alert, "告警规则创建成功")
 }
 
 // UpdateAlert 更新告警规则
 func UpdateAlert(c *gin.Context) {
 	id := c.Param("id")
 
+	// 验证ID
+	if _, err := validator.ValidateID(id); err != nil {
+		response.ParamError(c, err.Error())
+		return
+	}
+
 	var alert model.MonitorAlert
 	if err := db.First(&alert, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "Alert not found"})
+			response.NotFound(c, "告警规则不存在")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to query alert"})
+		response.DBError(c, err)
 		return
 	}
 
@@ -279,8 +287,17 @@ func UpdateAlert(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": err.Error()})
+		response.ParamError(c, "参数错误: "+err.Error())
 		return
+	}
+
+	// 验证条件
+	if req.Condition != "" {
+		validConditions := map[string]bool{"gt": true, "gte": true, "lt": true, "lte": true, "eq": true}
+		if !validConditions[req.Condition] {
+			response.ParamError(c, "无效的条件，请使用: gt, gte, lt, lte, eq")
+			return
+		}
 	}
 
 	updates := map[string]interface{}{}
@@ -300,56 +317,68 @@ func UpdateAlert(c *gin.Context) {
 		updates["is_active"] = *req.IsActive
 	}
 
-	db.Model(&alert).Updates(updates)
+	if err := db.Model(&alert).Updates(updates).Error; err != nil {
+		response.DBError(c, err)
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Alert updated successfully",
-	})
+	response.SuccessWithMessage(c, nil, "告警规则更新成功")
 }
 
 // DeleteAlert 删除告警规则
 func DeleteAlert(c *gin.Context) {
 	id := c.Param("id")
 
-	var alert model.MonitorAlert
-	if err := db.First(&alert, id).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "Alert not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to query alert"})
+	// 验证ID
+	if _, err := validator.ValidateID(id); err != nil {
+		response.ParamError(c, err.Error())
 		return
 	}
 
-	db.Delete(&alert)
+	var alert model.MonitorAlert
+	if err := db.First(&alert, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			response.NotFound(c, "告警规则不存在")
+			return
+		}
+		response.DBError(c, err)
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Alert deleted successfully",
-	})
+	if err := db.Delete(&alert).Error; err != nil {
+		response.DBError(c, err)
+		return
+	}
+
+	response.SuccessWithMessage(c, nil, "告警规则删除成功")
 }
 
 // ResolveAlert 解决告警
 func ResolveAlert(c *gin.Context) {
 	id := c.Param("id")
 
-	var alert model.MonitorAlert
-	if err := db.First(&alert, id).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "Alert not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to query alert"})
+	// 验证ID
+	if _, err := validator.ValidateID(id); err != nil {
+		response.ParamError(c, err.Error())
 		return
 	}
 
-	db.Model(&alert).Update("status", "normal")
+	var alert model.MonitorAlert
+	if err := db.First(&alert, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			response.NotFound(c, "告警规则不存在")
+			return
+		}
+		response.DBError(c, err)
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Alert resolved successfully",
-	})
+	if err := db.Model(&alert).Update("status", "normal").Error; err != nil {
+		response.DBError(c, err)
+		return
+	}
+
+	response.SuccessWithMessage(c, nil, "告警已解决")
 }
 
 // Rules 告警规则列表（兼容旧接口）
@@ -359,13 +388,10 @@ func Rules(c *gin.Context) {
 
 // Health 健康检查
 func Health(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"status":    "healthy",
-			"timestamp": time.Now().Unix(),
-			"uptime":    time.Since(startTime).Seconds(),
-		},
+	response.Success(c, gin.H{
+		"status":    "healthy",
+		"timestamp": time.Now().Unix(),
+		"uptime":    time.Since(startTime).Seconds(),
 	})
 }
 
@@ -373,7 +399,7 @@ func Health(c *gin.Context) {
 func Stats(c *gin.Context) {
 	appID := c.Query("app_id")
 	if appID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "app_id is required"})
+		response.ParamError(c, "app_id 不能为空")
 		return
 	}
 
@@ -396,15 +422,12 @@ func Stats(c *gin.Context) {
 		Limit(10).
 		Scan(&metricStats)
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"total_metrics":  totalMetrics,
-			"total_alerts":   totalAlerts,
-			"active_alerts":  activeAlerts,
-			"alerting_count": alertingCount,
-			"metric_stats":   metricStats,
-		},
+	response.Success(c, gin.H{
+		"total_metrics":  totalMetrics,
+		"total_alerts":   totalAlerts,
+		"active_alerts":  activeAlerts,
+		"alerting_count": alertingCount,
+		"metric_stats":   metricStats,
 	})
 }
 

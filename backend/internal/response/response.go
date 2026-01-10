@@ -180,6 +180,14 @@ func DBError(c *gin.Context, err error) {
 	InternalError(c, message)
 }
 
+// ServerError 服务器内部错误
+func ServerError(c *gin.Context, message string) {
+	if message == "" {
+		message = "服务器内部错误"
+	}
+	InternalError(c, message)
+}
+
 // PageSuccess 分页成功响应
 func PageSuccess(c *gin.Context, list interface{}, total int64, page, size int) {
 	SuccessPage(c, list, total, page, size)

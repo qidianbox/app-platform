@@ -2,8 +2,8 @@ package version
 
 import (
 	"app-platform-backend/internal/model"
-	"net/http"
-	"strconv"
+	"app-platform-backend/internal/response"
+	"app-platform-backend/internal/validator"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,31 +19,35 @@ func InitDB(database *gorm.DB) {
 // List 版本列表
 func List(c *gin.Context) {
 	appID := c.Query("app_id")
-	platform := c.Query("platform")
 	status := c.Query("status")
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	size, _ := strconv.Atoi(c.DefaultQuery("size", "20"))
+	page, size := validator.ParsePagination(c.DefaultQuery("page", "1"), c.DefaultQuery("size", "20"))
 
 	if appID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "app_id is required"})
+		response.ParamError(c, "app_id 不能为空")
 		return
 	}
 
+	// 验证分页参数
+	page, size = validator.ValidatePagination(page, size)
+
 	query := db.Model(&model.Version{}).Where("app_id = ?", appID)
 
-	if platform != "" {
-		// 暂时忽略平台筛选，因为模型中没有platform字段
-	}
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
 
 	var total int64
-	query.Count(&total)
+	if err := query.Count(&total).Error; err != nil {
+		response.DBError(c, err)
+		return
+	}
 
 	var versions []model.Version
 	offset := (page - 1) * size
-	query.Offset(offset).Limit(size).Order("created_at DESC").Find(&versions)
+	if err := query.Offset(offset).Limit(size).Order("created_at DESC").Find(&versions).Error; err != nil {
+		response.DBError(c, err)
+		return
+	}
 
 	// 转换为前端需要的格式
 	var result []map[string]interface{}
@@ -63,15 +67,7 @@ func List(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"list":  result,
-			"total": total,
-			"page":  page,
-			"size":  size,
-		},
-	})
+	response.PageSuccess(c, result, total, page, size)
 }
 
 // Create 创建版本
@@ -88,8 +84,22 @@ func Create(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": err.Error()})
+		response.ParamError(c, "参数错误: "+err.Error())
 		return
+	}
+
+	// 验证版本号格式
+	if len(req.Version) < 1 || len(req.Version) > 20 {
+		response.ParamError(c, "版本号长度应在1-20个字符之间")
+		return
+	}
+
+	// 验证下载URL
+	if req.DownloadURL != "" {
+		if err := validator.ValidateURL(req.DownloadURL); err != nil {
+			response.ParamError(c, "下载URL格式错误")
+			return
+		}
 	}
 
 	// 获取最大版本号
@@ -112,23 +122,32 @@ func Create(c *gin.Context) {
 	}
 
 	if err := db.Create(&version).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to create version"})
+		response.DBError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Version created successfully",
-		"data":    version,
-	})
+	response.SuccessWithMessage(c, version, "版本创建成功")
 }
 
 // Update 更新版本
 func Update(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
+
+	// 验证ID
+	id, err := validator.ValidateID(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "Invalid version ID"})
+		response.ParamError(c, "无效的版本ID")
+		return
+	}
+
+	// 检查版本是否存在
+	var existingVersion model.Version
+	if err := db.First(&existingVersion, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			response.NotFound(c, "版本不存在")
+			return
+		}
+		response.DBError(c, err)
 		return
 	}
 
@@ -140,8 +159,16 @@ func Update(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": err.Error()})
+		response.ParamError(c, "参数错误: "+err.Error())
 		return
+	}
+
+	// 验证下载URL
+	if req.DownloadURL != "" {
+		if err := validator.ValidateURL(req.DownloadURL); err != nil {
+			response.ParamError(c, "下载URL格式错误")
+			return
+		}
 	}
 
 	updates := map[string]interface{}{}
@@ -160,22 +187,37 @@ func Update(c *gin.Context) {
 	}
 
 	if err := db.Model(&model.Version{}).Where("id = ?", id).Updates(updates).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to update version"})
+		response.DBError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Version updated successfully",
-	})
+	response.SuccessWithMessage(c, nil, "版本更新成功")
 }
 
 // Publish 发布版本
 func Publish(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
+
+	// 验证ID
+	id, err := validator.ValidateID(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "Invalid version ID"})
+		response.ParamError(c, "无效的版本ID")
+		return
+	}
+
+	// 检查版本是否存在
+	var existingVersion model.Version
+	if err := db.First(&existingVersion, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			response.NotFound(c, "版本不存在")
+			return
+		}
+		response.DBError(c, err)
+		return
+	}
+
+	if existingVersion.Status == "published" {
+		response.ParamError(c, "版本已发布")
 		return
 	}
 
@@ -184,54 +226,82 @@ func Publish(c *gin.Context) {
 		"status":       "published",
 		"published_at": now,
 	}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to publish version"})
+		response.DBError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Version published successfully",
-	})
+	response.SuccessWithMessage(c, nil, "版本发布成功")
 }
 
 // Offline 下线版本
 func Offline(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
+
+	// 验证ID
+	id, err := validator.ValidateID(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "Invalid version ID"})
+		response.ParamError(c, "无效的版本ID")
+		return
+	}
+
+	// 检查版本是否存在
+	var existingVersion model.Version
+	if err := db.First(&existingVersion, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			response.NotFound(c, "版本不存在")
+			return
+		}
+		response.DBError(c, err)
+		return
+	}
+
+	if existingVersion.Status == "offline" {
+		response.ParamError(c, "版本已下线")
 		return
 	}
 
 	if err := db.Model(&model.Version{}).Where("id = ?", id).Update("status", "offline").Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to offline version"})
+		response.DBError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Version offline successfully",
-	})
+	response.SuccessWithMessage(c, nil, "版本下线成功")
 }
 
 // Delete 删除版本
 func Delete(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
+
+	// 验证ID
+	id, err := validator.ValidateID(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "Invalid version ID"})
+		response.ParamError(c, "无效的版本ID")
+		return
+	}
+
+	// 检查版本是否存在
+	var existingVersion model.Version
+	if err := db.First(&existingVersion, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			response.NotFound(c, "版本不存在")
+			return
+		}
+		response.DBError(c, err)
+		return
+	}
+
+	// 不允许删除已发布的版本
+	if existingVersion.Status == "published" {
+		response.ParamError(c, "不能删除已发布的版本，请先下线")
 		return
 	}
 
 	if err := db.Delete(&model.Version{}, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to delete version"})
+		response.DBError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Version deleted successfully",
-	})
+	response.SuccessWithMessage(c, nil, "版本删除成功")
 }
 
 // CheckUpdate 检查更新
@@ -240,7 +310,7 @@ func CheckUpdate(c *gin.Context) {
 	currentVersion := c.Query("version")
 
 	if appID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "app_id is required"})
+		response.ParamError(c, "app_id 不能为空")
 		return
 	}
 
@@ -251,32 +321,26 @@ func CheckUpdate(c *gin.Context) {
 		First(&latestVersion).Error
 
 	if err == gorm.ErrRecordNotFound {
-		c.JSON(http.StatusOK, gin.H{
-			"code": 0,
-			"data": gin.H{
-				"has_update": false,
-			},
+		response.Success(c, gin.H{
+			"has_update": false,
 		})
 		return
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to check update"})
+		response.DBError(c, err)
 		return
 	}
 
 	hasUpdate := latestVersion.VersionName != currentVersion
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"has_update":   hasUpdate,
-			"version":      latestVersion.VersionName,
-			"version_code": latestVersion.VersionCode,
-			"description":  latestVersion.Description,
-			"download_url": latestVersion.DownloadURL,
-			"force_update": latestVersion.IsForceUpdate == 1,
-		},
+	response.Success(c, gin.H{
+		"has_update":   hasUpdate,
+		"version":      latestVersion.VersionName,
+		"version_code": latestVersion.VersionCode,
+		"description":  latestVersion.Description,
+		"download_url": latestVersion.DownloadURL,
+		"force_update": latestVersion.IsForceUpdate == 1,
 	})
 }
 
@@ -284,7 +348,7 @@ func CheckUpdate(c *gin.Context) {
 func Stats(c *gin.Context) {
 	appID := c.Query("app_id")
 	if appID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "app_id is required"})
+		response.ParamError(c, "app_id 不能为空")
 		return
 	}
 
@@ -294,13 +358,10 @@ func Stats(c *gin.Context) {
 	db.Model(&model.Version{}).Where("app_id = ? AND status = ?", appID, "draft").Count(&draft)
 	db.Model(&model.Version{}).Where("app_id = ? AND status = ?", appID, "offline").Count(&offline)
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"total":     total,
-			"published": published,
-			"draft":     draft,
-			"offline":   offline,
-		},
+	response.Success(c, gin.H{
+		"total":     total,
+		"published": published,
+		"draft":     draft,
+		"offline":   offline,
 	})
 }

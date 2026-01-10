@@ -2,9 +2,10 @@ package user
 
 import (
 	"log"
-	"net/http"
-	"strconv"
 	"time"
+
+	"app-platform-backend/internal/response"
+	"app-platform-backend/internal/validator"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -62,17 +63,12 @@ func List(c *gin.Context) {
 	var req ListRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		log.Printf("[UserAPI] List - Invalid request: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": err.Error()})
+		response.ParamError(c, "请求参数错误: "+err.Error())
 		return
 	}
 
-	// 默认值
-	if req.Page == 0 {
-		req.Page = 1
-	}
-	if req.Size == 0 {
-		req.Size = 20
-	}
+	// 验证分页参数
+	req.Page, req.Size = validator.ValidatePagination(req.Page, req.Size)
 
 	log.Printf("[UserAPI] List - Request: page=%d, size=%d, search=%s", req.Page, req.Size, req.Search)
 
@@ -89,7 +85,7 @@ func List(c *gin.Context) {
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		log.Printf("[UserAPI] List - Count error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to count users"})
+		response.DBError(c, err)
 		return
 	}
 
@@ -98,7 +94,7 @@ func List(c *gin.Context) {
 	offset := (req.Page - 1) * req.Size
 	if err := query.Offset(offset).Limit(req.Size).Order("createdAt DESC").Find(&users).Error; err != nil {
 		log.Printf("[UserAPI] List - Query error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to query users"})
+		response.DBError(c, err)
 		return
 	}
 
@@ -127,24 +123,18 @@ func List(c *gin.Context) {
 
 	log.Printf("[UserAPI] List - Found %d users, total %d", len(users), total)
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"list":  responseList,
-			"total": total,
-			"page":  req.Page,
-			"size":  req.Size,
-		},
-	})
+	response.PageSuccess(c, responseList, total, req.Page, req.Size)
 }
 
 // Detail 获取用户详情
 func Detail(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
+
+	// 验证ID
+	id, err := validator.ValidateID(idStr)
 	if err != nil {
 		log.Printf("[UserAPI] Detail - Invalid user ID: %s", idStr)
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "Invalid user ID"})
+		response.ParamError(c, "无效的用户ID")
 		return
 	}
 
@@ -154,11 +144,11 @@ func Detail(c *gin.Context) {
 	if err := db.First(&user, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Printf("[UserAPI] Detail - User %d not found", id)
-			c.JSON(http.StatusNotFound, gin.H{"code": 404, "message": "User not found"})
+			response.NotFound(c, "用户不存在")
 			return
 		}
 		log.Printf("[UserAPI] Detail - Query error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Failed to query user"})
+		response.DBError(c, err)
 		return
 	}
 
@@ -171,7 +161,7 @@ func Detail(c *gin.Context) {
 		email = *user.Email
 	}
 
-	response := UserResponse{
+	userResponse := UserResponse{
 		ID:          user.ID,
 		Nickname:    name,
 		Phone:       "",
@@ -182,10 +172,7 @@ func Detail(c *gin.Context) {
 		LastLoginAt: user.LastSignedIn,
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": response,
-	})
+	response.Success(c, userResponse)
 }
 
 // UpdateStatusRequest 更新用户状态请求参数
@@ -196,27 +183,26 @@ type UpdateStatusRequest struct {
 // UpdateStatus 更新用户状态（Manus平台不支持，返回成功但不实际修改）
 func UpdateStatus(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
+
+	// 验证ID
+	id, err := validator.ValidateID(idStr)
 	if err != nil {
 		log.Printf("[UserAPI] UpdateStatus - Invalid user ID: %s", idStr)
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "Invalid user ID"})
+		response.ParamError(c, "无效的用户ID")
 		return
 	}
 
 	var req UpdateStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Printf("[UserAPI] UpdateStatus - Invalid request: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": err.Error()})
+		response.ParamError(c, "请求参数错误: "+err.Error())
 		return
 	}
 
 	log.Printf("[UserAPI] UpdateStatus - User %d status to %d (note: Manus platform doesn't support status field)", id, req.Status)
 
 	// Manus平台的users表没有status字段，这里只返回成功
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "User status updated successfully",
-	})
+	response.SuccessWithMessage(c, nil, "用户状态更新成功")
 }
 
 // Stats 用户统计
@@ -255,15 +241,12 @@ func Stats(c *gin.Context) {
 
 	log.Printf("[UserAPI] Stats - total=%d, active=%d, todayNew=%d, admin=%d", total, active, todayNew, adminCount)
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 0,
-		"data": gin.H{
-			"total":     total,
-			"active":    active,
-			"today_new": todayNew,
-			"disabled":  0,
-			"normal":    total,
-			"admin":     adminCount,
-		},
+	response.Success(c, gin.H{
+		"total":     total,
+		"active":    active,
+		"today_new": todayNew,
+		"disabled":  0,
+		"normal":    total,
+		"admin":     adminCount,
 	})
 }
