@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS versions (\n    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,\n    app_id BIGINT UNSIGNED NOT NULL,\n    version_name VARCHAR(50) NOT NULL,\n    version_code INT NOT NULL,\n    description TEXT,\n    download_url VARCHAR(500),\n    is_force_update TINYINT DEFAULT 0,\n    status VARCHAR(50) DEFAULT 'draft',\n    published_at DATETIME,\n    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n    deleted_at DATETIME,\n    INDEX idx_versions_app_id (app_id),\n    INDEX idx_versions_version_code (version_code),\n    INDEX idx_versions_app_status_code (app_id, status, version_code),\n    INDEX idx_versions_created_at (created_at)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3HmF555sZ6wXsVo.885fbf394348 --database cSZcQBnZuHpLU79S85jppV --execute CREATE TABLE IF NOT EXISTS versions (\n    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,\n    app_id BIGINT UNSIGNED NOT NULL,\n    version_name VARCHAR(50) NOT NULL,\n    version_code INT NOT NULL,\n    description TEXT,\n    download_url VARCHAR(500),\n    is_force_update TINYINT DEFAULT 0,\n    status VARCHAR(50) DEFAULT 'draft',\n    published_at DATETIME,\n    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n    deleted_at DATETIME,\n    INDEX idx_versions_app_id (app_id),\n    INDEX idx_versions_version_code (version_code),\n    INDEX idx_versions_app_status_code (app_id, status, version_code),\n    INDEX idx_versions_created_at (created_at)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 253
+}

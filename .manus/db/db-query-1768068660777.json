@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS push_records (\n    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,\n    app_id BIGINT UNSIGNED NOT NULL,\n    title VARCHAR(255),\n    content TEXT,\n    target_type VARCHAR(50) DEFAULT 'all',\n    target_ids TEXT,\n    status VARCHAR(50) DEFAULT 'pending',\n    sent_count INT DEFAULT 0,\n    success_count INT DEFAULT 0,\n    failed_count INT DEFAULT 0,\n    scheduled_at DATETIME,\n    sent_at DATETIME,\n    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n    deleted_at DATETIME,\n    INDEX idx_push_records_app_id (app_id),\n    INDEX idx_push_records_status (status),\n    INDEX idx_push_records_app_status (app_id, status),\n    INDEX idx_push_records_created_at (created_at)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3HmF555sZ6wXsVo.885fbf394348 --database cSZcQBnZuHpLU79S85jppV --execute CREATE TABLE IF NOT EXISTS push_records (\n    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,\n    app_id BIGINT UNSIGNED NOT NULL,\n    title VARCHAR(255),\n    content TEXT,\n    target_type VARCHAR(50) DEFAULT 'all',\n    target_ids TEXT,\n    status VARCHAR(50) DEFAULT 'pending',\n    sent_count INT DEFAULT 0,\n    success_count INT DEFAULT 0,\n    failed_count INT DEFAULT 0,\n    scheduled_at DATETIME,\n    sent_at DATETIME,\n    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n    deleted_at DATETIME,\n    INDEX idx_push_records_app_id (app_id),\n    INDEX idx_push_records_status (status),\n    INDEX idx_push_records_app_status (app_id, status),\n    INDEX idx_push_records_created_at (created_at)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 212
+}

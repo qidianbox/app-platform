@@ -1,0 +1,21 @@
+{
+  "query": "SELECT id, user_id, user_name, action, resource, description, request_path, status_code, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3HmF555sZ6wXsVo.885fbf394348 --database cSZcQBnZuHpLU79S85jppV --execute SELECT id, user_id, user_name, action, resource, description, request_path, status_code, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "user_id": "1",
+      "user_name": "",
+      "action": "view",
+      "resource": "app",
+      "description": "查看应用",
+      "request_path": "/api/v1/apps",
+      "status_code": "200",
+      "created_at": "2026-01-10 13:16:30.094"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuser_id\tuser_name\taction\tresource\tdescription\trequest_path\tstatus_code\tcreated_at\n1\t1\t\tview\tapp\t查看应用\t/api/v1/apps\t200\t2026-01-10 13:16:30.094\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}

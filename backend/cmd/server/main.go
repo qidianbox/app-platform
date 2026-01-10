@@ -39,6 +39,10 @@ func main() {
 	// 初始化JWT
 	middleware.InitJWT(&cfg.JWT)
 
+	// 初始化审计日志数据库连接
+	middleware.InitAuditDB(database.GetDB())
+	log.Println("[Main] Audit logging initialized")
+
 	// 设置Gin模式
 	gin.SetMode(cfg.Server.Mode)
 
@@ -83,6 +87,7 @@ func main() {
 		// 需要认证的接口
 		auth := v1.Group("")
 		auth.Use(middleware.AuthMiddleware())
+		auth.Use(middleware.AuditMiddleware()) // 审计日志中间件
 		{
 			// 管理员相关
 			adminGroup := auth.Group("/admin")

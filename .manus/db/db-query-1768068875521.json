@@ -1,0 +1,9 @@
+{
+  "query": "SELECT id, user_id, user_name, action, resource, description, request_path, status_code, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3HmF555sZ6wXsVo.885fbf394348 --database cSZcQBnZuHpLU79S85jppV --execute SELECT id, user_id, user_name, action, resource, description, request_path, status_code, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 10;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 56
+}

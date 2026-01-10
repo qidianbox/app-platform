@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE audit_logs ADD COLUMN request_body TEXT AFTER request_method;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3HmF555sZ6wXsVo.885fbf394348 --database cSZcQBnZuHpLU79S85jppV --execute ALTER TABLE audit_logs ADD COLUMN request_body TEXT AFTER request_method;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 433
+}
