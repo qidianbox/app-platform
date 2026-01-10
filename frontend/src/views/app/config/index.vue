@@ -1198,10 +1198,20 @@ const formatDate = (dateStr) => {
 const saveBasicConfig = async () => {
   try {
     await request.put(`/apps/${appId.value}`, basicConfig.value)
-    ElMessage.success('配置保存成功')
+    ElMessage({
+      message: '基础配置保存成功',
+      type: 'success',
+      duration: 3000,
+      showClose: true
+    })
     fetchAppInfo()
   } catch (error) {
-    ElMessage.error('保存失败')
+    ElMessage({
+      message: '配置保存失败，请稍后重试',
+      type: 'error',
+      duration: 5000,
+      showClose: true
+    })
   }
 }
 
@@ -1266,10 +1276,20 @@ const saveModuleConfig = async (moduleKey) => {
     await request.put(`/apps/${appId.value}/modules/${moduleKey}/config`, {
       config: configData
     })
-    ElMessage.success('配置保存成功')
+    ElMessage({
+      message: '配置保存成功',
+      type: 'success',
+      duration: 3000,
+      showClose: true
+    })
   } catch (error) {
     console.error('保存配置失败:', error)
-    ElMessage.error('保存失败')
+    ElMessage({
+      message: '配置保存失败，请稍后重试',
+      type: 'error',
+      duration: 5000,
+      showClose: true
+    })
   }
 }
 
