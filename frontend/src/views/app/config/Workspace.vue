@@ -625,8 +625,17 @@ const getVersionStatusText = (status) => {
 
 // 获取用户列表
 const fetchUserList = async () => {
-  if (!props.appId) return
+  if (!props.appId) {
+    console.warn('[UserManagement] appId is not set, skipping fetch')
+    return
+  }
   userLoading.value = true
+  console.log('[UserManagement] Fetching user list for app:', props.appId, {
+    page: userPage.value,
+    size: userPageSize.value,
+    status: userStatus.value,
+    search: userSearch.value
+  })
   try {
     const res = await getUserList({
       app_id: props.appId,
@@ -635,12 +644,23 @@ const fetchUserList = async () => {
       status: userStatus.value,
       search: userSearch.value
     })
+    console.log('[UserManagement] API response:', res)
     if (res.code === 0) {
-      userList.value = res.data.list || []
-      userTotal.value = res.data.total || 0
+      userList.value = res.data?.list || []
+      userTotal.value = res.data?.total || 0
+      console.log('[UserManagement] Loaded', userList.value.length, 'users, total:', userTotal.value)
+    } else {
+      console.error('[UserManagement] API returned error code:', res.code, res.message)
+      ElMessage.error(res.message || '获取用户列表失败')
     }
   } catch (error) {
-    console.error('获取用户列表失败:', error)
+    console.error('[UserManagement] Failed to fetch user list:', error)
+    console.error('[UserManagement] Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    })
+    // 不显示错误提示，因为 request.js 已经处理了
   } finally {
     userLoading.value = false
   }
