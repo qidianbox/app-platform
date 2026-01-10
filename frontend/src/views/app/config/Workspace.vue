@@ -441,6 +441,379 @@
           />
         </div>
       </div>
+
+      <!-- 存储服务 -->
+      <div v-else-if="currentMenu === 'storage'" class="content-section">
+        <div class="section-header">
+          <h2>存储服务</h2>
+          <p>管理应用文件存储</p>
+        </div>
+
+        <!-- 存储统计 -->
+        <div class="stats-grid small">
+          <div class="stat-card blue">
+            <div class="stat-content">
+              <div class="stat-value">{{ fileStats.total_count || 0 }}</div>
+              <div class="stat-label">文件总数</div>
+            </div>
+            <div class="stat-icon"><el-icon><FolderOpened /></el-icon></div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-content">
+              <div class="stat-value">{{ formatFileSize(fileStats.total_size || 0) }}</div>
+              <div class="stat-label">占用空间</div>
+            </div>
+            <div class="stat-icon"><el-icon><PieChart /></el-icon></div>
+          </div>
+          <div class="stat-card orange">
+            <div class="stat-content">
+              <div class="stat-value">{{ fileStats.today_count || 0 }}</div>
+              <div class="stat-label">今日上传</div>
+            </div>
+            <div class="stat-icon"><el-icon><Upload /></el-icon></div>
+          </div>
+        </div>
+
+        <!-- 操作栏 -->
+        <div class="toolbar">
+          <div class="search-area">
+            <el-input v-model="fileSearch" placeholder="搜索文件名" prefix-icon="Search" clearable style="width: 200px" @keyup.enter="fetchFileList" />
+            <el-select v-model="fileType" placeholder="文件类型" clearable style="width: 120px" @change="fetchFileList">
+              <el-option label="全部" value="" />
+              <el-option label="图片" value="image" />
+              <el-option label="文档" value="document" />
+              <el-option label="视频" value="video" />
+              <el-option label="音频" value="audio" />
+              <el-option label="其他" value="other" />
+            </el-select>
+            <el-button type="primary" @click="fetchFileList">搜索</el-button>
+          </div>
+          <div class="action-area">
+            <el-upload
+              :action="uploadUrl"
+              :headers="uploadHeaders"
+              :on-success="handleUploadSuccess"
+              :on-error="handleUploadError"
+              :show-file-list="false"
+              multiple
+            >
+              <el-button type="primary" :icon="Upload">上传文件</el-button>
+            </el-upload>
+            <el-button :icon="Delete" :disabled="selectedFiles.length === 0" @click="batchDeleteFilesAction">批量删除</el-button>
+          </div>
+        </div>
+
+        <!-- 文件列表 -->
+        <el-table :data="fileList" stripe v-loading="fileLoading" @selection-change="handleFileSelectionChange">
+          <el-table-column type="selection" width="50" />
+          <el-table-column prop="original_name" label="文件名" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="mime_type" label="类型" width="120">
+            <template #default="{ row }">
+              <el-tag size="small">{{ getFileTypeLabel(row.mime_type) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="file_size" label="大小" width="100">
+            <template #default="{ row }">{{ formatFileSize(row.file_size) }}</template>
+          </el-table-column>
+          <el-table-column prop="created_at" label="上传时间" width="180">
+            <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="150" fixed="right">
+            <template #default="{ row }">
+              <el-button type="primary" link size="small" @click="downloadFileAction(row)">下载</el-button>
+              <el-button type="danger" link size="small" @click="deleteFileAction(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pagination">
+          <el-pagination
+            v-model:current-page="filePage"
+            v-model:page-size="filePageSize"
+            :total="fileTotal"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="fetchFileList"
+            @current-change="fetchFileList"
+          />
+        </div>
+      </div>
+
+      <!-- 数据埋点 -->
+      <div v-else-if="currentMenu === 'events'" class="content-section">
+        <div class="section-header">
+          <h2>数据埋点</h2>
+          <p>查看和分析应用事件数据</p>
+        </div>
+
+        <!-- 埋点统计 -->
+        <div class="stats-grid small">
+          <div class="stat-card blue">
+            <div class="stat-content">
+              <div class="stat-value">{{ eventStats.total_events || 0 }}</div>
+              <div class="stat-label">事件总数</div>
+            </div>
+            <div class="stat-icon"><el-icon><DataAnalysis /></el-icon></div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-content">
+              <div class="stat-value">{{ eventStats.today_events || 0 }}</div>
+              <div class="stat-label">今日事件</div>
+            </div>
+            <div class="stat-icon"><el-icon><TrendCharts /></el-icon></div>
+          </div>
+          <div class="stat-card orange">
+            <div class="stat-content">
+              <div class="stat-value">{{ eventStats.unique_users || 0 }}</div>
+              <div class="stat-label">独立用户</div>
+            </div>
+            <div class="stat-icon"><el-icon><User /></el-icon></div>
+          </div>
+        </div>
+
+        <el-tabs v-model="eventTab">
+          <el-tab-pane label="事件列表" name="list">
+            <div class="toolbar">
+              <div class="search-area">
+                <el-date-picker
+                  v-model="eventDateRange"
+                  type="daterange"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                  style="width: 260px"
+                  value-format="YYYY-MM-DD"
+                  @change="fetchEventList"
+                />
+                <el-select v-model="eventName" placeholder="事件类型" clearable style="width: 150px" @change="fetchEventList">
+                  <el-option label="全部" value="" />
+                  <el-option label="页面浏览" value="page_view" />
+                  <el-option label="按钮点击" value="button_click" />
+                  <el-option label="表单提交" value="form_submit" />
+                  <el-option label="登录" value="login" />
+                  <el-option label="注册" value="register" />
+                </el-select>
+                <el-button type="primary" @click="fetchEventList">搜索</el-button>
+              </div>
+              <div class="action-area">
+                <el-button :icon="Download" @click="exportEvents">导出</el-button>
+              </div>
+            </div>
+
+            <el-table :data="eventList" stripe v-loading="eventLoading">
+              <el-table-column prop="event_name" label="事件名称" width="150" />
+              <el-table-column prop="event_type" label="事件类型" width="120">
+                <template #default="{ row }">
+                  <el-tag size="small">{{ row.event_type || '自定义' }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="user_id" label="用户ID" width="120" />
+              <el-table-column prop="device_id" label="设备ID" width="150" show-overflow-tooltip />
+              <el-table-column prop="properties" label="属性" min-width="200">
+                <template #default="{ row }">
+                  <el-tooltip :content="JSON.stringify(row.properties)" placement="top">
+                    <span class="properties-preview">{{ JSON.stringify(row.properties).slice(0, 50) }}...</span>
+                  </el-tooltip>
+                </template>
+              </el-table-column>
+              <el-table-column prop="created_at" label="时间" width="180">
+                <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
+              </el-table-column>
+            </el-table>
+
+            <div class="pagination">
+              <el-pagination
+                v-model:current-page="eventPage"
+                v-model:page-size="eventPageSize"
+                :total="eventTotal"
+                :page-sizes="[20, 50, 100, 200]"
+                layout="total, sizes, prev, pager, next, jumper"
+                @size-change="fetchEventList"
+                @current-change="fetchEventList"
+              />
+            </div>
+          </el-tab-pane>
+
+          <el-tab-pane label="漏斗分析" name="funnel">
+            <div class="funnel-config">
+              <el-form :inline="true">
+                <el-form-item label="漏斗步骤">
+                  <el-select v-model="funnelSteps" multiple placeholder="选择事件步骤" style="width: 400px">
+                    <el-option label="页面浏览" value="page_view" />
+                    <el-option label="按钮点击" value="button_click" />
+                    <el-option label="表单提交" value="form_submit" />
+                    <el-option label="登录" value="login" />
+                    <el-option label="注册" value="register" />
+                    <el-option label="支付" value="payment" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item>
+                  <el-button type="primary" @click="analyzeFunnel">分析</el-button>
+                </el-form-item>
+              </el-form>
+            </div>
+            <div class="funnel-chart" ref="funnelChartRef"></div>
+          </el-tab-pane>
+
+          <el-tab-pane label="事件定义" name="definitions">
+            <div class="toolbar">
+              <div class="search-area"></div>
+              <div class="action-area">
+                <el-button type="primary" :icon="Plus" @click="showEventDefDialog = true">新建事件</el-button>
+              </div>
+            </div>
+
+            <el-table :data="eventDefinitions" stripe v-loading="eventDefLoading">
+              <el-table-column prop="name" label="事件名称" width="150" />
+              <el-table-column prop="code" label="事件编码" width="150" />
+              <el-table-column prop="description" label="描述" min-width="200" />
+              <el-table-column prop="properties" label="属性定义" min-width="200">
+                <template #default="{ row }">
+                  <el-tag v-for="prop in (row.properties || []).slice(0, 3)" :key="prop" size="small" style="margin-right: 4px">{{ prop }}</el-tag>
+                  <span v-if="(row.properties || []).length > 3">...</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="120" fixed="right">
+                <template #default="{ row }">
+                  <el-button type="danger" link size="small" @click="deleteEventDefAction(row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+        </el-tabs>
+      </div>
+
+      <!-- 监控告警 -->
+      <div v-else-if="currentMenu === 'monitor'" class="content-section">
+        <div class="section-header">
+          <h2>监控告警</h2>
+          <p>实时监控应用运行状态</p>
+        </div>
+
+        <!-- 监控指标卡片 -->
+        <div class="stats-grid">
+          <div class="stat-card" :class="healthStatus === 'healthy' ? 'green' : 'red'">
+            <div class="stat-content">
+              <div class="stat-value">{{ healthStatus === 'healthy' ? '正常' : '异常' }}</div>
+              <div class="stat-label">系统状态</div>
+            </div>
+            <div class="stat-icon"><el-icon><Connection /></el-icon></div>
+          </div>
+          <div class="stat-card blue">
+            <div class="stat-content">
+              <div class="stat-value">{{ monitorStats.cpu_usage || 0 }}%</div>
+              <div class="stat-label">CPU使用率</div>
+            </div>
+            <div class="stat-icon"><el-icon><Monitor /></el-icon></div>
+          </div>
+          <div class="stat-card orange">
+            <div class="stat-content">
+              <div class="stat-value">{{ monitorStats.memory_usage || 0 }}%</div>
+              <div class="stat-label">内存使用率</div>
+            </div>
+            <div class="stat-icon"><el-icon><PieChart /></el-icon></div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-content">
+              <div class="stat-value">{{ monitorStats.active_alerts || 0 }}</div>
+              <div class="stat-label">活跃告警</div>
+            </div>
+            <div class="stat-icon"><el-icon><Warning /></el-icon></div>
+          </div>
+        </div>
+
+        <el-tabs v-model="monitorTab">
+          <el-tab-pane label="监控图表" name="charts">
+            <div class="charts-row">
+              <div class="chart-card">
+                <div class="chart-header">
+                  <h3>请求量趋势</h3>
+                  <el-radio-group v-model="monitorPeriod" size="small" @change="fetchMonitorMetrics">
+                    <el-radio-button label="1h">1小时</el-radio-button>
+                    <el-radio-button label="24h">24小时</el-radio-button>
+                    <el-radio-button label="7d">7天</el-radio-button>
+                  </el-radio-group>
+                </div>
+                <div class="chart-body" ref="requestMetricChartRef"></div>
+              </div>
+              <div class="chart-card">
+                <div class="chart-header">
+                  <h3>错误率趋势</h3>
+                </div>
+                <div class="chart-body" ref="errorMetricChartRef"></div>
+              </div>
+            </div>
+          </el-tab-pane>
+
+          <el-tab-pane label="告警列表" name="alerts">
+            <div class="toolbar">
+              <div class="search-area">
+                <el-select v-model="alertStatus" placeholder="告警状态" clearable style="width: 120px" @change="fetchAlertList">
+                  <el-option label="全部" value="" />
+                  <el-option label="未处理" value="0" />
+                  <el-option label="已处理" value="1" />
+                </el-select>
+              </div>
+              <div class="action-area">
+                <el-button :icon="Refresh" @click="fetchAlertList">刷新</el-button>
+              </div>
+            </div>
+
+            <el-table :data="alertList" stripe v-loading="alertLoading">
+              <el-table-column prop="name" label="告警名称" width="150" />
+              <el-table-column prop="metric_name" label="监控指标" width="150" />
+              <el-table-column prop="metric_value" label="当前值" width="100" />
+              <el-table-column prop="threshold" label="阈值" width="100" />
+              <el-table-column prop="status" label="状态" width="100">
+                <template #default="{ row }">
+                  <el-tag :type="row.status === 0 ? 'danger' : 'success'" size="small">
+                    {{ row.status === 0 ? '未处理' : '已处理' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="created_at" label="触发时间" width="180">
+                <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
+              </el-table-column>
+              <el-table-column label="操作" width="120" fixed="right">
+                <template #default="{ row }">
+                  <el-button v-if="row.status === 0" type="primary" link size="small" @click="resolveAlert(row)">处理</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+
+          <el-tab-pane label="告警规则" name="rules">
+            <div class="toolbar">
+              <div class="search-area"></div>
+              <div class="action-area">
+                <el-button type="primary" :icon="Plus" @click="showAlertRuleDialog = true">新建规则</el-button>
+              </div>
+            </div>
+
+            <el-table :data="alertRules" stripe v-loading="alertRuleLoading">
+              <el-table-column prop="name" label="规则名称" width="150" />
+              <el-table-column prop="metric_name" label="监控指标" width="150" />
+              <el-table-column prop="condition_type" label="条件" width="100">
+                <template #default="{ row }">
+                  {{ row.condition_type === 'gt' ? '>' : row.condition_type === 'lt' ? '<' : row.condition_type }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="threshold" label="阈值" width="100" />
+              <el-table-column prop="duration" label="持续时间(秒)" width="120" />
+              <el-table-column prop="status" label="状态" width="100">
+                <template #default="{ row }">
+                  <el-switch v-model="row.status" :active-value="1" :inactive-value="0" @change="toggleAlertRule(row)" />
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="120" fixed="right">
+                <template #default="{ row }">
+                  <el-button type="danger" link size="small" @click="deleteAlertRule(row)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+        </el-tabs>
+      </div>
     </div>
 
     <!-- 发布新版本对话框 -->
@@ -488,14 +861,21 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import * as echarts from 'echarts'
 import { 
   DataLine, User, UserFilled, Warning, Top, Bottom,
-  Plus, Download, Refresh, Search,
-  House, Management, Bell, Document, Promotion, ArrowLeft
+  Plus, Download, Refresh, Search, Delete, Upload, View, Edit,
+  House, Management, Bell, Document, Promotion, ArrowLeft,
+  FolderOpened, DataAnalysis, Monitor, PieChart, TrendCharts, Timer, Connection
 } from '@element-plus/icons-vue'
 import {
   getUserList, getUserStats, updateUserStatus,
   getLogList, getLogStats, exportLogs as exportLogsApi,
   getMessageList, sendMessage, batchSendMessage,
-  getVersionList, createVersion, publishVersion, offlineVersion
+  getVersionList, createVersion, publishVersion, offlineVersion,
+  // 存储服务
+  uploadFile, getFileList, downloadFile, deleteFile, getFileStats, batchDeleteFiles,
+  // 数据埋点
+  getEventList, getEventStats, getFunnelAnalysis, getEventDefinitions, createEventDefinition, deleteEventDefinition,
+  // 监控告警
+  getMonitorMetrics, getAlertList, createAlert, updateAlert, deleteAlert, getMonitorStats, getHealthCheck
 } from '@/api/app'
 
 const props = defineProps({
@@ -508,6 +888,9 @@ const menuItems = [
   { key: 'overview', label: '数据概览', icon: House },
   { key: 'users', label: '用户管理', icon: User },
   { key: 'messages', label: '消息推送', icon: Bell },
+  { key: 'storage', label: '存储服务', icon: FolderOpened },
+  { key: 'events', label: '数据埋点', icon: DataAnalysis },
+  { key: 'monitor', label: '监控告警', icon: Monitor },
   { key: 'logs', label: '日志查询', icon: Document },
   { key: 'versions', label: '版本管理', icon: Promotion }
 ]
@@ -593,6 +976,52 @@ const versionRules = {
 }
 const versionFormRef = ref(null)
 const versionSubmitting = ref(false)
+
+// 存储服务
+const fileList = ref([])
+const fileLoading = ref(false)
+const filePage = ref(1)
+const filePageSize = ref(10)
+const fileTotal = ref(0)
+const fileSearch = ref('')
+const fileType = ref('')
+const fileStats = ref({ total_count: 0, total_size: 0, today_count: 0 })
+const selectedFiles = ref([])
+const uploadUrl = '/api/v1/files'
+const uploadHeaders = { Authorization: `Bearer ${localStorage.getItem('token') || ''}` }
+
+// 数据埋点
+const eventTab = ref('list')
+const eventList = ref([])
+const eventLoading = ref(false)
+const eventPage = ref(1)
+const eventPageSize = ref(20)
+const eventTotal = ref(0)
+const eventDateRange = ref([])
+const eventName = ref('')
+const eventStats = ref({ total_events: 0, today_events: 0, unique_users: 0 })
+const funnelSteps = ref([])
+const funnelChartRef = ref(null)
+let funnelChart = null
+const eventDefinitions = ref([])
+const eventDefLoading = ref(false)
+const showEventDefDialog = ref(false)
+
+// 监控告警
+const monitorTab = ref('charts')
+const monitorPeriod = ref('24h')
+const monitorStats = ref({ cpu_usage: 0, memory_usage: 0, active_alerts: 0 })
+const healthStatus = ref('healthy')
+const requestMetricChartRef = ref(null)
+const errorMetricChartRef = ref(null)
+let requestMetricChart = null
+let errorMetricChart = null
+const alertList = ref([])
+const alertLoading = ref(false)
+const alertStatus = ref('')
+const alertRules = ref([])
+const alertRuleLoading = ref(false)
+const showAlertRuleDialog = ref(false)
 
 // 格式化日期
 const formatDate = (dateStr) => {
@@ -947,6 +1376,435 @@ const offlineVersionAction = async (row) => {
   }
 }
 
+// ========== 存储服务函数 ==========
+
+// 格式化文件大小
+const formatFileSize = (bytes) => {
+  if (!bytes || bytes === 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  return (bytes / Math.pow(1024, i)).toFixed(2) + ' ' + units[i]
+}
+
+// 获取文件类型标签
+const getFileTypeLabel = (mimeType) => {
+  if (!mimeType) return '其他'
+  if (mimeType.startsWith('image/')) return '图片'
+  if (mimeType.startsWith('video/')) return '视频'
+  if (mimeType.startsWith('audio/')) return '音频'
+  if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('word')) return '文档'
+  return '其他'
+}
+
+// 获取文件列表
+const fetchFileList = async () => {
+  if (!props.appId) return
+  fileLoading.value = true
+  try {
+    const params = {
+      app_id: props.appId,
+      page: filePage.value,
+      size: filePageSize.value
+    }
+    if (fileSearch.value) params.keyword = fileSearch.value
+    if (fileType.value) params.type = fileType.value
+    
+    const res = await getFileList(params)
+    if (res.code === 0) {
+      fileList.value = res.data.list || []
+      fileTotal.value = res.data.total || 0
+    }
+  } catch (error) {
+    console.error('获取文件列表失败:', error)
+  } finally {
+    fileLoading.value = false
+  }
+}
+
+// 获取文件统计
+const fetchFileStats = async () => {
+  if (!props.appId) return
+  try {
+    const res = await getFileStats({ app_id: props.appId })
+    if (res.code === 0) {
+      fileStats.value = res.data || { total_count: 0, total_size: 0, today_count: 0 }
+    }
+  } catch (error) {
+    console.error('获取文件统计失败:', error)
+  }
+}
+
+// 文件选择变化
+const handleFileSelectionChange = (selection) => {
+  selectedFiles.value = selection
+}
+
+// 上传成功
+const handleUploadSuccess = (response) => {
+  if (response.code === 0) {
+    ElMessage.success('文件上传成功')
+    fetchFileList()
+    fetchFileStats()
+  } else {
+    ElMessage.error(response.message || '上传失败')
+  }
+}
+
+// 上传失败
+const handleUploadError = () => {
+  ElMessage.error('文件上传失败')
+}
+
+// 下载文件
+const downloadFileAction = async (row) => {
+  try {
+    const res = await downloadFile(row.id)
+    if (res.code === 0 && res.data.url) {
+      window.open(res.data.url, '_blank')
+    }
+  } catch (error) {
+    console.error('下载文件失败:', error)
+  }
+}
+
+// 删除文件
+const deleteFileAction = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该文件吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    const res = await deleteFile(row.id)
+    if (res.code === 0) {
+      ElMessage.success('文件删除成功')
+      fetchFileList()
+      fetchFileStats()
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除文件失败:', error)
+    }
+  }
+}
+
+// 批量删除文件
+const batchDeleteFilesAction = async () => {
+  if (selectedFiles.value.length === 0) return
+  try {
+    await ElMessageBox.confirm(`确定要删除选中的 ${selectedFiles.value.length} 个文件吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    const ids = selectedFiles.value.map(f => f.id)
+    const res = await batchDeleteFiles({ ids })
+    if (res.code === 0) {
+      ElMessage.success('文件删除成功')
+      selectedFiles.value = []
+      fetchFileList()
+      fetchFileStats()
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('批量删除文件失败:', error)
+    }
+  }
+}
+
+// ========== 数据埋点函数 ==========
+
+// 获取事件列表
+const fetchEventList = async () => {
+  if (!props.appId) return
+  eventLoading.value = true
+  try {
+    const params = {
+      app_id: props.appId,
+      page: eventPage.value,
+      size: eventPageSize.value
+    }
+    if (eventDateRange.value && eventDateRange.value.length === 2) {
+      params.start_date = eventDateRange.value[0]
+      params.end_date = eventDateRange.value[1]
+    }
+    if (eventName.value) params.event_name = eventName.value
+    
+    const res = await getEventList(params)
+    if (res.code === 0) {
+      eventList.value = res.data.list || []
+      eventTotal.value = res.data.total || 0
+    }
+  } catch (error) {
+    console.error('获取事件列表失败:', error)
+  } finally {
+    eventLoading.value = false
+  }
+}
+
+// 获取事件统计
+const fetchEventStats = async () => {
+  if (!props.appId) return
+  try {
+    const res = await getEventStats({ app_id: props.appId })
+    if (res.code === 0) {
+      eventStats.value = res.data || { total_events: 0, today_events: 0, unique_users: 0 }
+    }
+  } catch (error) {
+    console.error('获取事件统计失败:', error)
+  }
+}
+
+// 导出事件
+const exportEvents = () => {
+  ElMessage.info('导出功能开发中...')
+}
+
+// 漏斗分析
+const analyzeFunnel = async () => {
+  if (funnelSteps.value.length < 2) {
+    ElMessage.warning('请至少选择2个步骤')
+    return
+  }
+  try {
+    const res = await getFunnelAnalysis({
+      app_id: props.appId,
+      steps: funnelSteps.value
+    })
+    if (res.code === 0) {
+      initFunnelChart(res.data)
+    }
+  } catch (error) {
+    console.error('漏斗分析失败:', error)
+  }
+}
+
+// 初始化漏斗图表
+const initFunnelChart = (data) => {
+  if (!funnelChartRef.value) return
+  if (funnelChart) funnelChart.dispose()
+  funnelChart = echarts.init(funnelChartRef.value)
+  funnelChart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    series: [{
+      name: '漏斗分析',
+      type: 'funnel',
+      left: '10%',
+      width: '80%',
+      label: { formatter: '{b}: {c}' },
+      data: data || [
+        { value: 100, name: '页面浏览' },
+        { value: 80, name: '按钮点击' },
+        { value: 60, name: '表单提交' },
+        { value: 40, name: '注册' },
+        { value: 20, name: '支付' }
+      ]
+    }]
+  })
+}
+
+// 获取事件定义列表
+const fetchEventDefinitions = async () => {
+  if (!props.appId) return
+  eventDefLoading.value = true
+  try {
+    const res = await getEventDefinitions({ app_id: props.appId })
+    if (res.code === 0) {
+      eventDefinitions.value = res.data || []
+    }
+  } catch (error) {
+    console.error('获取事件定义失败:', error)
+  } finally {
+    eventDefLoading.value = false
+  }
+}
+
+// 删除事件定义
+const deleteEventDefAction = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该事件定义吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    const res = await deleteEventDefinition(row.id)
+    if (res.code === 0) {
+      ElMessage.success('删除成功')
+      fetchEventDefinitions()
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除事件定义失败:', error)
+    }
+  }
+}
+
+// ========== 监控告警函数 ==========
+
+// 获取监控统计
+const fetchMonitorStats = async () => {
+  if (!props.appId) return
+  try {
+    const res = await getMonitorStats({ app_id: props.appId })
+    if (res.code === 0) {
+      monitorStats.value = res.data || { cpu_usage: 0, memory_usage: 0, active_alerts: 0 }
+    }
+  } catch (error) {
+    console.error('获取监控统计失败:', error)
+  }
+}
+
+// 获取健康检查
+const fetchHealthCheck = async () => {
+  if (!props.appId) return
+  try {
+    const res = await getHealthCheck({ app_id: props.appId })
+    if (res.code === 0) {
+      healthStatus.value = res.data.status || 'healthy'
+    }
+  } catch (error) {
+    healthStatus.value = 'unhealthy'
+    console.error('健康检查失败:', error)
+  }
+}
+
+// 获取监控指标
+const fetchMonitorMetrics = async () => {
+  if (!props.appId) return
+  try {
+    const res = await getMonitorMetrics({
+      app_id: props.appId,
+      period: monitorPeriod.value
+    })
+    if (res.code === 0) {
+      initMonitorCharts(res.data)
+    }
+  } catch (error) {
+    console.error('获取监控指标失败:', error)
+  }
+}
+
+// 初始化监控图表
+const initMonitorCharts = (data) => {
+  // 请求量图表
+  if (requestMetricChartRef.value) {
+    if (requestMetricChart) requestMetricChart.dispose()
+    requestMetricChart = echarts.init(requestMetricChartRef.value)
+    requestMetricChart.setOption({
+      tooltip: { trigger: 'axis' },
+      xAxis: { type: 'category', data: data?.times || ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'] },
+      yAxis: { type: 'value' },
+      series: [{
+        name: '请求量',
+        type: 'line',
+        smooth: true,
+        data: data?.requests || [120, 200, 150, 80, 70, 110],
+        areaStyle: { opacity: 0.3 }
+      }]
+    })
+  }
+  
+  // 错误率图表
+  if (errorMetricChartRef.value) {
+    if (errorMetricChart) errorMetricChart.dispose()
+    errorMetricChart = echarts.init(errorMetricChartRef.value)
+    errorMetricChart.setOption({
+      tooltip: { trigger: 'axis' },
+      xAxis: { type: 'category', data: data?.times || ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'] },
+      yAxis: { type: 'value', axisLabel: { formatter: '{value}%' } },
+      series: [{
+        name: '错误率',
+        type: 'line',
+        smooth: true,
+        data: data?.errors || [0.5, 0.8, 0.3, 1.2, 0.6, 0.4],
+        itemStyle: { color: '#f56c6c' },
+        areaStyle: { opacity: 0.3, color: '#f56c6c' }
+      }]
+    })
+  }
+}
+
+// 获取告警列表
+const fetchAlertList = async () => {
+  if (!props.appId) return
+  alertLoading.value = true
+  try {
+    const params = { app_id: props.appId }
+    if (alertStatus.value !== '') params.status = parseInt(alertStatus.value)
+    
+    const res = await getAlertList(params)
+    if (res.code === 0) {
+      alertList.value = res.data || []
+    }
+  } catch (error) {
+    console.error('获取告警列表失败:', error)
+  } finally {
+    alertLoading.value = false
+  }
+}
+
+// 处理告警
+const resolveAlert = async (row) => {
+  try {
+    const res = await updateAlert(row.id, { status: 1 })
+    if (res.code === 0) {
+      ElMessage.success('告警已处理')
+      fetchAlertList()
+      fetchMonitorStats()
+    }
+  } catch (error) {
+    console.error('处理告警失败:', error)
+  }
+}
+
+// 切换告警规则状态
+const toggleAlertRule = async (row) => {
+  try {
+    const res = await updateAlert(row.id, { status: row.status })
+    if (res.code === 0) {
+      ElMessage.success(row.status === 1 ? '规则已启用' : '规则已禁用')
+    }
+  } catch (error) {
+    console.error('更新告警规则失败:', error)
+  }
+}
+
+// 删除告警规则
+const deleteAlertRule = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该告警规则吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    const res = await deleteAlert(row.id)
+    if (res.code === 0) {
+      ElMessage.success('删除成功')
+      fetchAlertRules()
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除告警规则失败:', error)
+    }
+  }
+}
+
+// 获取告警规则列表
+const fetchAlertRules = async () => {
+  if (!props.appId) return
+  alertRuleLoading.value = true
+  try {
+    const res = await getAlertList({ app_id: props.appId, type: 'rule' })
+    if (res.code === 0) {
+      alertRules.value = res.data || []
+    }
+  } catch (error) {
+    console.error('获取告警规则失败:', error)
+  } finally {
+    alertRuleLoading.value = false
+  }
+}
+
 // 初始化图表
 const initCharts = () => {
   if (requestChartRef.value) {
@@ -1022,6 +1880,19 @@ watch(currentMenu, (val) => {
     fetchMessageList()
   } else if (val === 'versions') {
     fetchVersionList()
+  } else if (val === 'storage') {
+    fetchFileList()
+    fetchFileStats()
+  } else if (val === 'events') {
+    fetchEventList()
+    fetchEventStats()
+    if (eventTab.value === 'definitions') fetchEventDefinitions()
+  } else if (val === 'monitor') {
+    fetchMonitorStats()
+    fetchHealthCheck()
+    setTimeout(() => fetchMonitorMetrics(), 100)
+    if (monitorTab.value === 'alerts') fetchAlertList()
+    if (monitorTab.value === 'rules') fetchAlertRules()
   }
 })
 
@@ -1031,6 +1902,9 @@ watch(() => props.appId, () => {
   if (currentMenu.value === 'logs') fetchLogList()
   if (currentMenu.value === 'messages') fetchMessageList()
   if (currentMenu.value === 'versions') fetchVersionList()
+  if (currentMenu.value === 'storage') { fetchFileList(); fetchFileStats() }
+  if (currentMenu.value === 'events') { fetchEventList(); fetchEventStats() }
+  if (currentMenu.value === 'monitor') { fetchMonitorStats(); fetchHealthCheck(); fetchMonitorMetrics() }
 })
 </script>
 
@@ -1360,6 +2234,31 @@ watch(() => props.appId, () => {
   margin-left: 12px;
   font-size: 12px;
   color: #909399;
+}
+
+// 存储服务和新模块样式
+.stats-grid.small {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.properties-preview {
+  font-family: monospace;
+  font-size: 12px;
+  color: #606266;
+}
+
+.funnel-config {
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.funnel-chart {
+  height: 400px;
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
 }
 
 @media (max-width: 1200px) {

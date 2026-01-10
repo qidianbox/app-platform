@@ -66,3 +66,22 @@ export const getConfigHistory = (appId, moduleCode) => request.get('/configs/his
 
 // 统计数据
 export const getDashboardStats = () => request.get('/stats')
+
+// 存储服务
+export const uploadFile = (formData) => request.post('/files', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+export const getFileList = (params) => request.get('/files', { params })
+export const downloadFile = (id) => request.get(`/files/download/${id}`, { responseType: 'blob' })
+export const deleteFile = (id) => request.delete(`/files/${id}`)
+export const getFileStats = (appId) => request.get('/files/stats', { params: { app_id: appId } })
+export const batchDeleteFiles = (ids) => request.post('/files/batch-delete', { ids })
+
+// 事件定义管理
+export const getEventDefinitions = (params) => request.get('/events/definitions', { params })
+export const createEventDefinition = (data) => request.post('/events/definitions', data)
+export const updateEventDefinition = (id, data) => request.put(`/events/definitions/${id}`, data)
+export const deleteEventDefinition = (id) => request.delete(`/events/definitions/${id}`)
+
+// 告警规则管理
+export const updateAlert = (id, data) => request.put(`/monitor/alerts/${id}`, data)
+export const deleteAlert = (id) => request.delete(`/monitor/alerts/${id}`)
+export const getHealthCheck = () => request.get('/monitor/health')
