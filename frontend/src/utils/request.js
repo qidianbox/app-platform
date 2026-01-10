@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage, ElNotification } from 'element-plus'
+import { ErrorCodes, getErrorMessage, isAuthError, isRetryableError, isRateLimitError } from './errorCodes'
 
 // 根据环境自动选择API地址
 const getBaseURL = () => {
@@ -12,6 +13,24 @@ const getBaseURL = () => {
   const apiHost = window.location.origin.replace(/517[34]/, '8080')
   return `${apiHost}/api/v1`
 }
+
+// 重试配置
+const RETRY_CONFIG = {
+  maxRetries: 3,           // 最大重试次数
+  retryDelay: 1000,        // 初始重试延迟（毫秒）
+  maxRetryDelay: 10000,    // 最大重试延迟
+  backoffMultiplier: 2,    // 退避倍数
+  retryStatusCodes: [408, 429, 500, 502, 503, 504]  // 可重试的HTTP状态码
+}
+
+// 计算重试延迟（指数退避）
+const getRetryDelay = (retryCount) => {
+  const delay = RETRY_CONFIG.retryDelay * Math.pow(RETRY_CONFIG.backoffMultiplier, retryCount)
+  return Math.min(delay, RETRY_CONFIG.maxRetryDelay)
+}
+
+// 延迟函数
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 // 系统日志收集器
 const systemLogger = {
@@ -71,6 +90,7 @@ const systemLogger = {
       fullUrl: config.baseURL + config.url,
       params: config.params,
       data: config.data,
+      retryCount: config._retryCount || 0,
       headers: {
         Authorization: config.headers?.Authorization ? '[REDACTED]' : undefined,
         'Content-Type': config.headers?.['Content-Type']
@@ -80,7 +100,8 @@ const systemLogger = {
     if (this.requests.length > this.maxLogs) {
       this.requests.shift()
     }
-    this.info('API', `Request: ${log.method} ${log.url}`, { params: log.params })
+    const retryInfo = log.retryCount > 0 ? ` (重试 #${log.retryCount})` : ''
+    this.info('API', `Request: ${log.method} ${log.url}${retryInfo}`, { params: log.params })
     return log
   },
   
@@ -94,11 +115,13 @@ const systemLogger = {
       url: response.config?.url,
       status: response.status,
       statusText: response.statusText,
+      code: response.data?.code,
       duration: requestLog ? Date.now() - new Date(requestLog.timestamp).getTime() : null,
       dataSize: JSON.stringify(response.data || {}).length
     }
-    this.info('API', `Response: ${log.method} ${log.url} - ${log.status} (${log.duration}ms)`, {
+    this.info('API', `Response: ${log.method} ${log.url} - ${log.status} [code:${log.code}] (${log.duration}ms)`, {
       status: log.status,
+      code: log.code,
       dataSize: log.dataSize
     })
     return log
@@ -117,6 +140,7 @@ const systemLogger = {
       message: error.response?.data?.message || error.message,
       errorCode: error.response?.data?.code,
       responseData: error.response?.data,
+      retryCount: error.config?._retryCount || 0,
       stack: error.stack
     }
     this.error('API', `Error: ${log.method} ${log.url} - ${log.status}: ${log.message}`, log)
@@ -224,34 +248,104 @@ request.interceptors.request.use(config => {
 request.interceptors.response.use(
   response => {
     systemLogger.logResponse(response, response.config._requestLog)
-    return response.data
+    
+    // 处理统一响应格式
+    const data = response.data
+    
+    // 如果响应包含code字段，检查是否成功
+    if (data && typeof data.code !== 'undefined') {
+      if (data.code === ErrorCodes.SUCCESS) {
+        // 成功，返回data字段
+        return data.data !== undefined ? data.data : data
+      } else {
+        // 业务错误，根据错误码处理
+        const errorCode = data.code
+        const errorMessage = data.message || getErrorMessage(errorCode)
+        
+        // 认证错误处理
+        if (isAuthError(errorCode)) {
+          handleAuthError(errorCode, errorMessage)
+          return Promise.reject(new Error(errorMessage))
+        }
+        
+        // 限流错误处理
+        if (isRateLimitError(errorCode)) {
+          ElMessage.warning({
+            message: '请求过于频繁，请稍后重试',
+            duration: 5000
+          })
+          return Promise.reject(new Error(errorMessage))
+        }
+        
+        // 其他业务错误
+        ElMessage.error(errorMessage)
+        return Promise.reject(new Error(errorMessage))
+      }
+    }
+    
+    // 兼容旧格式响应
+    return data
   },
-  error => {
+  async error => {
+    const config = error.config
+    
+    // 检查是否可以重试
+    if (shouldRetry(error, config)) {
+      config._retryCount = (config._retryCount || 0) + 1
+      const retryDelay = getRetryDelay(config._retryCount - 1)
+      
+      systemLogger.warn('API', `Retrying request (${config._retryCount}/${RETRY_CONFIG.maxRetries}) after ${retryDelay}ms`, {
+        url: config.url,
+        status: error.response?.status,
+        retryCount: config._retryCount
+      })
+      
+      // 显示重试提示
+      ElMessage.info({
+        message: `网络异常，正在重试 (${config._retryCount}/${RETRY_CONFIG.maxRetries})...`,
+        duration: retryDelay
+      })
+      
+      await delay(retryDelay)
+      return request(config)
+    }
+    
     const errorLog = systemLogger.logApiError(error)
     
-    // 更详细的错误提示
+    // 详细的错误处理
     let errorMessage = '请求失败'
     let showNotification = false
     
     if (error.response) {
       const status = error.response.status
       const data = error.response.data
+      const errorCode = data?.code
       
-      if (status === 401) {
-        errorMessage = '登录已过期，请重新登录'
-        localStorage.removeItem('token')
-        setTimeout(() => {
-          window.location.href = '/login'
-        }, 1500)
+      // 优先使用后端返回的错误消息
+      if (data?.message) {
+        errorMessage = data.message
+      } else if (errorCode) {
+        errorMessage = getErrorMessage(errorCode)
+      }
+      
+      // 根据状态码处理
+      if (status === 401 || isAuthError(errorCode)) {
+        handleAuthError(errorCode || ErrorCodes.UNAUTHORIZED, errorMessage)
+        return Promise.reject(error)
       } else if (status === 403) {
-        errorMessage = '没有权限执行此操作'
+        errorMessage = errorMessage || '没有权限执行此操作'
       } else if (status === 404) {
-        errorMessage = data?.message || 'API接口不存在'
-      } else if (status === 500) {
-        errorMessage = data?.message || '服务器内部错误'
+        errorMessage = errorMessage || 'API接口不存在'
+      } else if (status === 429) {
+        errorMessage = '请求过于频繁，请稍后重试'
+        ElMessage.warning({
+          message: errorMessage,
+          duration: 5000
+        })
+        return Promise.reject(error)
+      } else if (status >= 500) {
+        errorMessage = errorMessage || '服务器内部错误'
         showNotification = true
-      } else {
-        errorMessage = data?.message || `请求失败 (${status})`
       }
     } else if (error.code === 'ECONNABORTED') {
       errorMessage = '请求超时，请检查网络连接'
@@ -277,7 +371,114 @@ request.interceptors.response.use(
   }
 )
 
+// 判断是否应该重试
+function shouldRetry(error, config) {
+  // 已达到最大重试次数
+  if ((config._retryCount || 0) >= RETRY_CONFIG.maxRetries) {
+    return false
+  }
+  
+  // 请求被取消
+  if (axios.isCancel(error)) {
+    return false
+  }
+  
+  // 网络错误或超时
+  if (!error.response) {
+    return true
+  }
+  
+  // 检查状态码是否可重试
+  const status = error.response.status
+  if (RETRY_CONFIG.retryStatusCodes.includes(status)) {
+    return true
+  }
+  
+  // 检查业务错误码是否可重试
+  const errorCode = error.response.data?.code
+  if (errorCode && isRetryableError(errorCode)) {
+    return true
+  }
+  
+  return false
+}
+
+// 处理认证错误
+function handleAuthError(errorCode, errorMessage) {
+  let message = errorMessage
+  
+  switch (errorCode) {
+    case ErrorCodes.TOKEN_EXPIRED:
+      message = '登录已过期，请重新登录'
+      break
+    case ErrorCodes.TOKEN_INVALID:
+      message = '登录凭证无效，请重新登录'
+      break
+    case ErrorCodes.UNAUTHORIZED:
+      message = '请先登录'
+      break
+    case ErrorCodes.PERMISSION_DENIED:
+      message = '没有操作权限'
+      ElMessage.error(message)
+      return // 权限不足不需要跳转登录
+  }
+  
+  ElMessage.error(message)
+  localStorage.removeItem('token')
+  
+  // 延迟跳转，让用户看到提示
+  setTimeout(() => {
+    window.location.href = '/login'
+  }, 1500)
+}
+
+// 带重试的请求方法
+export const requestWithRetry = async (config, customRetryConfig = {}) => {
+  const retryConfig = { ...RETRY_CONFIG, ...customRetryConfig }
+  config._retryCount = 0
+  
+  const makeRequest = async () => {
+    try {
+      return await request(config)
+    } catch (error) {
+      if (config._retryCount < retryConfig.maxRetries && shouldRetry(error, config)) {
+        config._retryCount++
+        const retryDelay = getRetryDelay(config._retryCount - 1)
+        await delay(retryDelay)
+        return makeRequest()
+      }
+      throw error
+    }
+  }
+  
+  return makeRequest()
+}
+
+// 批量请求（带并发控制）
+export const batchRequest = async (requests, concurrency = 3) => {
+  const results = []
+  const executing = []
+  
+  for (const req of requests) {
+    const p = Promise.resolve().then(() => request(req))
+    results.push(p)
+    
+    if (concurrency <= requests.length) {
+      const e = p.then(() => executing.splice(executing.indexOf(e), 1))
+      executing.push(e)
+      if (executing.length >= concurrency) {
+        await Promise.race(executing)
+      }
+    }
+  }
+  
+  return Promise.allSettled(results)
+}
+
 // 导出日志收集器供其他模块使用
 export const logger = systemLogger
+
+// 导出错误码相关工具
+export { ErrorCodes, getErrorMessage, isAuthError, isRetryableError, isRateLimitError }
 
 export default request
