@@ -312,6 +312,82 @@
           </div>
         </div>
 
+        <!-- BaaS数据模型管理页面 -->
+        <div v-else-if="currentPage === 'baas_data'" class="page-content">
+          <div class="page-header">
+            <div>
+              <h2 class="page-title">数据模型管理</h2>
+              <p class="page-desc">定义数据结构，自动生成CRUD API</p>
+            </div>
+            <el-button type="primary" @click="showCreateCollectionDialog = true">
+              <el-icon><Plus /></el-icon>
+              新建数据模型
+            </el-button>
+          </div>
+          
+          <!-- 搜索栏 -->
+          <div class="search-bar">
+            <el-input 
+              v-model="collectionSearch" 
+              placeholder="搜索数据模型" 
+              style="width: 300px;"
+              clearable
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+          </div>
+          
+          <!-- 数据模型列表 -->
+          <div class="collection-list">
+            <div v-if="filteredCollections.length === 0" class="empty-state">
+              <el-empty description="暂无数据模型">
+                <el-button type="primary" @click="showCreateCollectionDialog = true">创建第一个数据模型</el-button>
+              </el-empty>
+            </div>
+            <div v-else class="collection-grid">
+              <div v-for="collection in filteredCollections" :key="collection.id" class="collection-card">
+                <div class="card-header">
+                  <div class="card-icon">
+                    <el-icon size="24"><Grid /></el-icon>
+                  </div>
+                  <div class="card-info">
+                    <h3>{{ collection.display_name || collection.name }}</h3>
+                    <span class="card-name">{{ collection.name }}</span>
+                  </div>
+                  <el-tag :type="collection.status === 1 ? 'success' : 'info'" size="small">
+                    {{ collection.status === 1 ? '已启用' : '已禁用' }}
+                  </el-tag>
+                </div>
+                <p class="card-desc">{{ collection.description || '暂无描述' }}</p>
+                <div class="card-stats">
+                  <span>字段数: {{ (collection.fields || []).length }}</span>
+                  <span>文档数: {{ collection.document_count || 0 }}</span>
+                </div>
+                <div class="card-actions">
+                  <el-button size="small" @click="editCollection(collection)">
+                    <el-icon><Edit /></el-icon>编辑
+                  </el-button>
+                  <el-button size="small" @click="viewApiDoc(collection)">
+                    <el-icon><Document /></el-icon>API文档
+                  </el-button>
+                  <el-button size="small" type="danger" @click="deleteCollection(collection)">
+                    <el-icon><Delete /></el-icon>删除
+                  </el-button>
+                </div>
+                <div class="card-api">
+                  <span class="api-label">API端点:</span>
+                  <code>/api/v1/baas/apps/{{ appId }}/data/{{ collection.name }}</code>
+                  <el-button link size="small" @click="copyApiEndpoint(collection)">
+                    <el-icon><CopyDocument /></el-icon>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 基础配置页面 -->
         <div v-else-if="currentPage === 'basic'" class="page-content">
           <h2 class="page-title">基础配置</h2>
@@ -1021,6 +1097,311 @@
         <el-button @click="historyDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
+    
+    <!-- 创建数据模型对话框 -->
+    <el-dialog v-model="showCreateCollectionDialog" title="新建数据模型" width="700px">
+      <el-form :model="collectionForm" label-width="120px">
+        <el-form-item label="模型名称" required>
+          <el-input v-model="collectionForm.name" placeholder="英文名称，如 products" />
+          <div class="form-hint">用于API路径，只能包含小写字母、数字和下划线</div>
+        </el-form-item>
+        <el-form-item label="显示名称">
+          <el-input v-model="collectionForm.display_name" placeholder="中文名称，如 商品" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="collectionForm.description" type="textarea" :rows="2" placeholder="数据模型的用途说明" />
+        </el-form-item>
+        
+        <el-divider content-position="left">字段定义</el-divider>
+        
+        <div class="field-list">
+          <div v-for="(field, index) in collectionForm.fields" :key="index" class="field-item">
+            <el-row :gutter="10">
+              <el-col :span="6">
+                <el-input v-model="field.name" placeholder="字段名" size="small" />
+              </el-col>
+              <el-col :span="6">
+                <el-input v-model="field.display_name" placeholder="显示名" size="small" />
+              </el-col>
+              <el-col :span="5">
+                <el-select v-model="field.type" placeholder="类型" size="small">
+                  <el-option label="字符串" value="string" />
+                  <el-option label="数字" value="number" />
+                  <el-option label="布尔" value="boolean" />
+                  <el-option label="数组" value="array" />
+                  <el-option label="对象" value="object" />
+                </el-select>
+              </el-col>
+              <el-col :span="4">
+                <el-checkbox v-model="field.required" size="small">必填</el-checkbox>
+              </el-col>
+              <el-col :span="3">
+                <el-button type="danger" size="small" @click="removeField(index)" link>
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </el-col>
+            </el-row>
+          </div>
+          <el-button type="primary" link @click="addField">
+            <el-icon><Plus /></el-icon>添加字段
+          </el-button>
+        </div>
+        
+        <el-divider content-position="left">权限设置</el-divider>
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="读取权限">
+              <el-select v-model="collectionForm.permissions.read">
+                <el-option label="公开" value="public" />
+                <el-option label="登录用户" value="authenticated" />
+                <el-option label="仅创建者" value="owner" />
+                <el-option label="仅管理员" value="admin" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="创建权限">
+              <el-select v-model="collectionForm.permissions.create">
+                <el-option label="公开" value="public" />
+                <el-option label="登录用户" value="authenticated" />
+                <el-option label="仅管理员" value="admin" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="更新权限">
+              <el-select v-model="collectionForm.permissions.update">
+                <el-option label="登录用户" value="authenticated" />
+                <el-option label="仅创建者" value="owner" />
+                <el-option label="仅管理员" value="admin" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="删除权限">
+              <el-select v-model="collectionForm.permissions.delete">
+                <el-option label="仅创建者" value="owner" />
+                <el-option label="仅管理员" value="admin" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCreateCollectionDialog = false">取消</el-button>
+        <el-button type="primary" @click="createCollection">创建</el-button>
+      </template>
+    </el-dialog>
+    
+    <!-- 编辑数据模型对话框 -->
+    <el-dialog v-model="showEditCollectionDialog" title="编辑数据模型" width="700px">
+      <el-form :model="collectionForm" label-width="120px">
+        <el-form-item label="模型名称">
+          <el-input v-model="collectionForm.name" disabled />
+          <div class="form-hint">模型名称创建后不可修改</div>
+        </el-form-item>
+        <el-form-item label="显示名称">
+          <el-input v-model="collectionForm.display_name" placeholder="中文名称" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="collectionForm.description" type="textarea" :rows="2" />
+        </el-form-item>
+        
+        <el-divider content-position="left">字段定义</el-divider>
+        
+        <div class="field-list">
+          <div v-for="(field, index) in collectionForm.fields" :key="index" class="field-item">
+            <el-row :gutter="10">
+              <el-col :span="6">
+                <el-input v-model="field.name" placeholder="字段名" size="small" />
+              </el-col>
+              <el-col :span="6">
+                <el-input v-model="field.display_name" placeholder="显示名" size="small" />
+              </el-col>
+              <el-col :span="5">
+                <el-select v-model="field.type" placeholder="类型" size="small">
+                  <el-option label="字符串" value="string" />
+                  <el-option label="数字" value="number" />
+                  <el-option label="布尔" value="boolean" />
+                  <el-option label="数组" value="array" />
+                  <el-option label="对象" value="object" />
+                </el-select>
+              </el-col>
+              <el-col :span="4">
+                <el-checkbox v-model="field.required" size="small">必填</el-checkbox>
+              </el-col>
+              <el-col :span="3">
+                <el-button type="danger" size="small" @click="removeField(index)" link>
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </el-col>
+            </el-row>
+          </div>
+          <el-button type="primary" link @click="addField">
+            <el-icon><Plus /></el-icon>添加字段
+          </el-button>
+        </div>
+        
+        <el-divider content-position="left">权限设置</el-divider>
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="读取权限">
+              <el-select v-model="collectionForm.permissions.read">
+                <el-option label="公开" value="public" />
+                <el-option label="登录用户" value="authenticated" />
+                <el-option label="仅创建者" value="owner" />
+                <el-option label="仅管理员" value="admin" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="创建权限">
+              <el-select v-model="collectionForm.permissions.create">
+                <el-option label="公开" value="public" />
+                <el-option label="登录用户" value="authenticated" />
+                <el-option label="仅管理员" value="admin" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="更新权限">
+              <el-select v-model="collectionForm.permissions.update">
+                <el-option label="登录用户" value="authenticated" />
+                <el-option label="仅创建者" value="owner" />
+                <el-option label="仅管理员" value="admin" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="删除权限">
+              <el-select v-model="collectionForm.permissions.delete">
+                <el-option label="仅创建者" value="owner" />
+                <el-option label="仅管理员" value="admin" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <template #footer>
+        <el-button @click="showEditCollectionDialog = false">取消</el-button>
+        <el-button type="primary" @click="updateCollection">保存</el-button>
+      </template>
+    </el-dialog>
+    
+    <!-- API文档对话框 -->
+    <el-dialog v-model="showApiDocDialog" title="API文档" width="900px">
+      <div v-if="currentCollection" class="api-doc">
+        <h3>{{ currentCollection.display_name || currentCollection.name }} API</h3>
+        <p class="api-desc">{{ currentCollection.description || '暂无描述' }}</p>
+        
+        <el-divider content-position="left">基础信息</el-divider>
+        <div class="api-info">
+          <p><strong>API基础路径:</strong> <code>/api/v1/baas/apps/{{ appId }}/data/{{ currentCollection.name }}</code></p>
+          <p><strong>认证方式:</strong> Bearer Token</p>
+          <p><strong>请求头:</strong> <code>Authorization: Bearer &lt;your_token&gt;</code></p>
+        </div>
+        
+        <el-divider content-position="left">权限配置</el-divider>
+        <div class="api-info">
+          <el-table :data="[
+            { action: '读取', permission: getPermissionLabel(currentCollection.permissions?.read) },
+            { action: '创建', permission: getPermissionLabel(currentCollection.permissions?.create) },
+            { action: '更新', permission: getPermissionLabel(currentCollection.permissions?.update) },
+            { action: '删除', permission: getPermissionLabel(currentCollection.permissions?.delete) }
+          ]" border size="small" style="margin-bottom: 16px">
+            <el-table-column prop="action" label="操作" width="100" />
+            <el-table-column prop="permission" label="权限要求" />
+          </el-table>
+        </div>
+        
+        <el-divider content-position="left">接口列表</el-divider>
+        
+        <el-collapse>
+          <el-collapse-item title="GET - 获取列表" name="list">
+            <div class="api-detail">
+              <p><strong>请求方式:</strong> GET</p>
+              <p><strong>URL:</strong> <code>/api/v1/baas/apps/{{ appId }}/data/{{ currentCollection.name }}</code></p>
+              <p><strong>查询参数:</strong></p>
+              <ul>
+                <li><code>page</code> - 页码，默认1</li>
+                <li><code>page_size</code> - 每页数量，默认20</li>
+                <li><code>search</code> - 搜索关键词</li>
+              </ul>
+              <p><strong>响应示例:</strong></p>
+              <pre>{
+  "code": 0,
+  "data": {
+    "list": [...],
+    "total": 100,
+    "page": 1,
+    "page_size": 20
+  }
+}</pre>
+            </div>
+          </el-collapse-item>
+          
+          <el-collapse-item title="POST - 创建文档" name="create">
+            <div class="api-detail">
+              <p><strong>请求方式:</strong> POST</p>
+              <p><strong>URL:</strong> <code>/api/v1/baas/apps/{{ appId }}/data/{{ currentCollection.name }}</code></p>
+              <p><strong>请求体:</strong></p>
+              <pre>{
+  "data": {
+    // 根据字段定义填写
+  }
+}</pre>
+            </div>
+          </el-collapse-item>
+          
+          <el-collapse-item title="GET - 获取单个文档" name="get">
+            <div class="api-detail">
+              <p><strong>请求方式:</strong> GET</p>
+              <p><strong>URL:</strong> <code>/api/v1/baas/apps/{{ appId }}/data/{{ currentCollection.name }}/:id</code></p>
+            </div>
+          </el-collapse-item>
+          
+          <el-collapse-item title="PUT - 更新文档" name="update">
+            <div class="api-detail">
+              <p><strong>请求方式:</strong> PUT</p>
+              <p><strong>URL:</strong> <code>/api/v1/baas/apps/{{ appId }}/data/{{ currentCollection.name }}/:id</code></p>
+              <p><strong>请求体:</strong></p>
+              <pre>{
+  "data": {
+    // 要更新的字段
+  }
+}</pre>
+            </div>
+          </el-collapse-item>
+          
+          <el-collapse-item title="DELETE - 删除文档" name="delete">
+            <div class="api-detail">
+              <p><strong>请求方式:</strong> DELETE</p>
+              <p><strong>URL:</strong> <code>/api/v1/baas/apps/{{ appId }}/data/{{ currentCollection.name }}/:id</code></p>
+            </div>
+          </el-collapse-item>
+        </el-collapse>
+        
+        <el-divider content-position="left">字段定义</el-divider>
+        <el-table :data="currentCollection.fields || []" border size="small">
+          <el-table-column prop="name" label="字段名" width="150" />
+          <el-table-column prop="display_name" label="显示名" width="150" />
+          <el-table-column prop="type" label="类型" width="100" />
+          <el-table-column prop="required" label="必填" width="80">
+            <template #default="{ row }">
+              <el-tag :type="row.required ? 'danger' : 'info'" size="small">
+                {{ row.required ? '是' : '否' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="default_value" label="默认值" />
+        </el-table>
+      </div>
+      <template #footer>
+        <el-button @click="showApiDocDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -1031,7 +1412,7 @@ import {
   ArrowLeft, ArrowRight, House, Setting, User, UserFilled, 
   CreditCard, ChatDotRound, DataLine, Document, Monitor, 
   FolderOpened, Tools, Box, Grid, Warning, CopyDocument,
-  Bell, DataAnalysis, Promotion, Lock
+  Bell, DataAnalysis, Promotion, Lock, Plus, Edit, Delete, Search
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
@@ -1042,7 +1423,9 @@ const route = useRoute()
 const router = useRouter()
 const appId = computed(() => route.params.id ? String(route.params.id) : '')
 
-const activeTab = ref('config') // 默认显示配置中心
+// 根据URL参数初始化activeTab
+const initialTab = route.query.tab === 'workspace' ? 'workspace' : 'config'
+const activeTab = ref(initialTab) // 默认显示配置中心
 const mobileMenuOpen = ref(false) // 移动端菜单状态
 const currentPage = ref('overview')
 const workspaceMenu = ref('overview') // 工作台子菜单
@@ -1059,11 +1442,12 @@ const workspaceMenuItems = [
   { key: 'versions', label: '版本管理', icon: Promotion },
   { key: 'audit', label: '审计日志', icon: Lock }
 ]
-const expandedGroups = ref(['user', 'message', 'data', 'system', 'storage'])
+const expandedGroups = ref(['baas', 'user', 'message', 'data', 'system', 'storage'])
 const adminName = ref(localStorage.getItem('adminName') || 'Admin')
 
 // 模块分组定义
 const moduleGroups = [
+  { key: 'baas', name: 'BaaS数据服务', icon: 'Grid', modules: ['baas_data'] },
   { key: 'user', name: '用户与权限', icon: 'UserFilled', modules: ['user_management'] },
   { key: 'payment', name: '交易与支付', icon: 'CreditCard', modules: ['payment'] },
   { key: 'message', name: '消息与通知', icon: 'ChatDotRound', modules: ['message_center', 'push_service', 'sms_service'] },
@@ -1074,6 +1458,7 @@ const moduleGroups = [
 
 // 模块名称映射
 const moduleNameMap = {
+  baas_data: '数据模型管理',
   user_management: '用户管理',
   message_center: '消息中心',
   push_service: '推送服务',
@@ -1098,6 +1483,37 @@ const appInfo = ref({
 })
 
 const appModules = ref([])
+
+// BaaS数据模型相关变量
+const collections = ref([])
+const collectionSearch = ref('')
+const showCreateCollectionDialog = ref(false)
+const showEditCollectionDialog = ref(false)
+const showApiDocDialog = ref(false)
+const currentCollection = ref(null)
+const collectionForm = ref({
+  name: '',
+  display_name: '',
+  description: '',
+  fields: [],
+  permissions: {
+    read: 'public',
+    create: 'authenticated',
+    update: 'owner',
+    delete: 'admin'
+  }
+})
+
+// 计算属性：过滤后的数据模型列表
+const filteredCollections = computed(() => {
+  if (!collectionSearch.value) return collections.value
+  const search = collectionSearch.value.toLowerCase()
+  return collections.value.filter(c => 
+    c.name.toLowerCase().includes(search) || 
+    (c.display_name && c.display_name.toLowerCase().includes(search)) ||
+    (c.description && c.description.toLowerCase().includes(search))
+  )
+})
 
 const stats = ref({
   userCount: 0,
@@ -1295,6 +1711,8 @@ const toggleGroup = (groupKey) => {
 const hasModulesInGroup = (groupKey) => {
   const group = moduleGroups.find(g => g.key === groupKey)
   if (!group) return false
+  // BaaS分组始终显示
+  if (groupKey === 'baas') return true
   // 使用module_code匹配（后端返回的字段）
   return appModules.value.some(m => group.modules.includes(m.module_code))
 }
@@ -1303,6 +1721,14 @@ const hasModulesInGroup = (groupKey) => {
 const getModulesInGroup = (groupKey) => {
   const group = moduleGroups.find(g => g.key === groupKey)
   if (!group) return []
+  
+  // BaaS分组返回固定模块
+  if (groupKey === 'baas') {
+    return [{
+      source_module: 'baas_data',
+      name: '数据模型管理'
+    }]
+  }
   
   // 去重：使用Map确保每个module_code只出现一次
   const uniqueModules = new Map()
@@ -1320,6 +1746,157 @@ const getModulesInGroup = (groupKey) => {
   
   return Array.from(uniqueModules.values())
 }
+
+// ==================== BaaS数据模型相关函数 ====================
+
+// 获取数据模型列表
+const fetchCollections = async () => {
+  if (!appId.value) return
+  try {
+    const res = await request.get(`/baas/apps/${appId.value}/collections`)
+    collections.value = res.list || res || []
+  } catch (error) {
+    console.error('获取数据模型列表失败:', error)
+    collections.value = []
+  }
+}
+
+// 创建数据模型
+const createCollection = async () => {
+  if (!collectionForm.value.name) {
+    ElMessage.warning('请输入数据模型名称')
+    return
+  }
+  try {
+    await request.post(`/baas/apps/${appId.value}/collections`, {
+      name: collectionForm.value.name,
+      display_name: collectionForm.value.display_name,
+      description: collectionForm.value.description,
+      fields: collectionForm.value.fields,
+      permissions: collectionForm.value.permissions
+    })
+    ElMessage.success('创建成功')
+    showCreateCollectionDialog.value = false
+    resetCollectionForm()
+    fetchCollections()
+  } catch (error) {
+    ElMessage.error('创建失败: ' + (error.message || '未知错误'))
+  }
+}
+
+// 编辑数据模型
+const editCollection = (collection) => {
+  currentCollection.value = collection
+  collectionForm.value = {
+    name: collection.name,
+    display_name: collection.display_name || '',
+    description: collection.description || '',
+    fields: collection.fields || [],
+    permissions: collection.permissions || {
+      read: 'public',
+      create: 'authenticated',
+      update: 'owner',
+      delete: 'admin'
+    }
+  }
+  showEditCollectionDialog.value = true
+}
+
+// 更新数据模型
+const updateCollection = async () => {
+  if (!currentCollection.value) return
+  try {
+    await request.put(`/baas/apps/${appId.value}/collections/${currentCollection.value.id}`, {
+      display_name: collectionForm.value.display_name,
+      description: collectionForm.value.description,
+      fields: collectionForm.value.fields,
+      permissions: collectionForm.value.permissions
+    })
+    ElMessage.success('更新成功')
+    showEditCollectionDialog.value = false
+    resetCollectionForm()
+    fetchCollections()
+  } catch (error) {
+    ElMessage.error('更新失败: ' + (error.message || '未知错误'))
+  }
+}
+
+// 删除数据模型
+const deleteCollection = async (collection) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除数据模型 "${collection.display_name || collection.name}" 吗？\n此操作将删除该模型下的所有数据，且不可恢复。`,
+      '删除确认',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
+    )
+    await request.delete(`/baas/apps/${appId.value}/collections/${collection.id}`)
+    ElMessage.success('删除成功')
+    fetchCollections()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败: ' + (error.message || '未知错误'))
+    }
+  }
+}
+
+// 获取权限标签
+const getPermissionLabel = (permission) => {
+  const labels = {
+    'public': '公开访问',
+    'auth': '登录用户',
+    'owner': '仅创建者',
+    'admin': '仅管理员'
+  }
+  return labels[permission] || permission || '未设置'
+}
+
+// 查看API文档
+const viewApiDoc = (collection) => {
+  currentCollection.value = collection
+  showApiDocDialog.value = true
+}
+
+// 复制API端点
+const copyApiEndpoint = (collection) => {
+  const endpoint = `/api/v1/baas/apps/${appId.value}/data/${collection.name}`
+  navigator.clipboard.writeText(endpoint)
+  ElMessage.success('API端点已复制到剪贴板')
+}
+
+// 重置表单
+const resetCollectionForm = () => {
+  collectionForm.value = {
+    name: '',
+    display_name: '',
+    description: '',
+    fields: [],
+    permissions: {
+      read: 'public',
+      create: 'authenticated',
+      update: 'owner',
+      delete: 'admin'
+    }
+  }
+  currentCollection.value = null
+}
+
+// 添加字段
+const addField = () => {
+  collectionForm.value.fields.push({
+    name: '',
+    display_name: '',
+    type: 'string',
+    required: false,
+    default_value: ''
+  })
+}
+
+// 删除字段
+const removeField = (index) => {
+  collectionForm.value.fields.splice(index, 1)
+}
+
+// ==================== 结束BaaS相关函数 ====================
 
 // 获取APP信息
 const fetchAppInfo = async () => {
@@ -1567,6 +2144,7 @@ onMounted(() => {
   if (appId.value && appId.value !== '') {
     fetchAppInfo()
     fetchAppModules()
+    fetchCollections()
   }
 })
 
@@ -1575,6 +2153,14 @@ watch(appId, (newVal, oldVal) => {
   if (newVal && newVal !== '' && (!oldVal || oldVal === '')) {
     fetchAppInfo()
     fetchAppModules()
+    fetchCollections()
+  }
+})
+
+// 监听currentPage变化，当切换到baas_data时加载数据
+watch(() => currentPage.value, (newVal) => {
+  if (newVal === 'baas_data') {
+    fetchCollections()
   }
 })
 </script>
@@ -2146,6 +2732,189 @@ watch(appId, (newVal, oldVal) => {
 
   :deep(.el-form-item__label) {
     font-size: 13px !important;
+  }
+}
+
+// BaaS数据模型管理样式
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.search-bar {
+  margin-bottom: 20px;
+}
+
+.collection-list {
+  .empty-state {
+    padding: 60px 0;
+    text-align: center;
+  }
+}
+
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 20px;
+}
+
+.collection-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.3s;
+  
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  }
+  
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+    
+    .card-info {
+      flex: 1;
+      
+      h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #303133;
+      }
+      
+      .card-name {
+        font-size: 12px;
+        color: #909399;
+      }
+    }
+  }
+  
+  .card-desc {
+    font-size: 14px;
+    color: #606266;
+    margin: 0 0 12px;
+    line-height: 1.5;
+  }
+  
+  .card-stats {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 16px;
+    
+    span {
+      font-size: 13px;
+      color: #909399;
+    }
+  }
+  
+  .card-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  
+  .card-api {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    background: #f5f7fa;
+    border-radius: 6px;
+    
+    .api-label {
+      font-size: 12px;
+      color: #909399;
+    }
+    
+    code {
+      flex: 1;
+      font-size: 12px;
+      color: #606266;
+      word-break: break-all;
+    }
+  }
+}
+
+.field-list {
+  .field-item {
+    margin-bottom: 12px;
+    padding: 12px;
+    background: #f5f7fa;
+    border-radius: 6px;
+  }
+}
+
+.form-hint {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.api-doc {
+  h3 {
+    margin: 0 0 8px;
+    font-size: 18px;
+  }
+  
+  .api-desc {
+    color: #606266;
+    margin-bottom: 16px;
+  }
+  
+  .api-info {
+    p {
+      margin: 8px 0;
+    }
+    
+    code {
+      background: #f5f7fa;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+  }
+  
+  .api-detail {
+    padding: 16px;
+    
+    p {
+      margin: 8px 0;
+    }
+    
+    ul {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+    
+    pre {
+      background: #f5f7fa;
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+    
+    code {
+      background: #f5f7fa;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
   }
 }
 </style>

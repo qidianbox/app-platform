@@ -114,85 +114,99 @@
         </div>
       </div>
 
-      <!-- 数据模型管理 -->
-      <div v-else-if="currentMenu === 'datamodel'" class="content-section">
+      <!-- 数据管理 -->
+      <div v-else-if="currentMenu === 'datamanage'" class="content-section">
         <div class="section-header">
-          <h2>数据模型管理</h2>
-          <p>定义数据结构，自动生成CRUD API</p>
+          <h2>数据管理</h2>
+          <p>查看和管理各数据模型中的数据</p>
         </div>
         
-        <!-- 操作栏 -->
-        <div class="toolbar">
-          <div class="search-area">
-            <el-input 
-              v-model="collectionSearch" 
-              placeholder="搜索数据模型" 
-              prefix-icon="Search"
-              clearable
-              style="width: 300px"
-              @keyup.enter="fetchCollections"
+        <!-- 数据模型选择 -->
+        <div class="data-manage-header">
+          <el-select v-model="selectedCollectionId" placeholder="选择数据模型" style="width: 300px" @change="onCollectionSelect">
+            <el-option 
+              v-for="collection in collections" 
+              :key="collection.id" 
+              :label="collection.display_name || collection.name" 
+              :value="collection.id"
             />
-            <el-button type="primary" @click="fetchCollections">搜索</el-button>
-          </div>
-          <div class="action-area">
-            <el-button type="primary" :icon="Plus" @click="showCollectionDialog = true">新建数据模型</el-button>
+          </el-select>
+          <div class="tip-text" v-if="collections.length === 0">
+            <el-icon><Warning /></el-icon>
+            暂无数据模型，请先在<router-link :to="`/apps/${appId}/config`">配置中心</router-link>创建数据模型
           </div>
         </div>
         
-        <!-- 数据模型卡片列表 -->
-        <div class="collections-grid" v-loading="collectionLoading">
-          <div v-for="collection in collections" :key="collection.id" class="collection-card">
-            <div class="card-header">
-              <div class="collection-info">
-                <el-icon class="collection-icon"><Grid /></el-icon>
-                <div class="collection-meta">
-                  <h3>{{ collection.display_name }}</h3>
-                  <span class="collection-name">{{ collection.name }}</span>
-                </div>
-              </div>
-              <el-tag :type="collection.status === 1 ? 'success' : 'info'" size="small">
-                {{ collection.status === 1 ? '已启用' : '已禁用' }}
-              </el-tag>
+        <!-- 数据操作区域 -->
+        <div v-if="selectedCollection" class="data-operation-area">
+          <!-- 工具栏 -->
+          <div class="toolbar">
+            <div class="search-area">
+              <el-input 
+                v-model="documentSearch" 
+                placeholder="搜索数据" 
+                prefix-icon="Search"
+                clearable
+                style="width: 300px"
+                @keyup.enter="fetchDocuments"
+              />
+              <el-button type="primary" @click="fetchDocuments">搜索</el-button>
             </div>
-            
-            <p class="collection-desc">{{ collection.description || '暂无描述' }}</p>
-            
-            <div class="collection-stats">
-              <div class="stat-item">
-                <span class="stat-label">字段数</span>
-                <span class="stat-value">{{ collection.fields?.length || 0 }}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">权限</span>
-                <span class="stat-value">{{ getPermissionLabel(collection.permissions?.read) }}</span>
-              </div>
-            </div>
-            
-            <div class="card-actions">
-              <el-button size="small" @click="viewCollectionData(collection)">
-                <el-icon><View /></el-icon>查看数据
-              </el-button>
-              <el-button size="small" @click="editCollection(collection)">
-                <el-icon><Edit /></el-icon>编辑
-              </el-button>
-              <el-button size="small" type="danger" @click="deleteCollection(collection)">
-                <el-icon><Delete /></el-icon>删除
-              </el-button>
-            </div>
-            
-            <div class="api-info">
-              <span class="api-label">API端点:</span>
-              <code class="api-endpoint">/api/v1/baas/apps/{{ appId }}/data/{{ collection.name }}</code>
-              <el-button size="small" link @click="copyApiEndpoint(collection.name)">
-                <el-icon><DocumentCopy /></el-icon>
-              </el-button>
+            <div class="action-area">
+              <el-button type="primary" :icon="Plus" @click="showAddDocumentDialog = true">新增数据</el-button>
+              <el-button :icon="Upload" @click="showImportDialog = true">导入</el-button>
+              <el-button :icon="Download" @click="exportData">导出</el-button>
             </div>
           </div>
           
-          <!-- 空状态 -->
-          <el-empty v-if="collections.length === 0 && !collectionLoading" description="暂无数据模型，点击上方按钮创建">
-            <el-button type="primary" @click="showCollectionDialog = true">新建数据模型</el-button>
-          </el-empty>
+          <!-- 数据表格 -->
+          <el-table :data="documentList" border v-loading="documentLoading" style="width: 100%">
+            <el-table-column type="index" label="#" width="60" />
+            <el-table-column 
+              v-for="field in selectedCollection.fields" 
+              :key="field.name" 
+              :prop="'data.' + field.name" 
+              :label="field.display_name || field.name"
+              min-width="120"
+            >
+              <template #default="{ row }">
+                {{ formatFieldValue(row.data?.[field.name], field.type) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="created_at" label="创建时间" width="180">
+              <template #default="{ row }">
+                {{ formatDate(row.created_at) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="150" fixed="right">
+              <template #default="{ row }">
+                <el-button size="small" link @click="editDocument(row)">
+                  <el-icon><Edit /></el-icon>编辑
+                </el-button>
+                <el-button size="small" link type="danger" @click="deleteDocument(row)">
+                  <el-icon><Delete /></el-icon>删除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          
+          <!-- 分页 -->
+          <div class="pagination-area">
+            <el-pagination
+              v-model:current-page="documentPage"
+              v-model:page-size="documentPageSize"
+              :total="documentTotal"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="fetchDocuments"
+              @current-change="fetchDocuments"
+            />
+          </div>
+        </div>
+        
+        <!-- 未选择数据模型时的提示 -->
+        <div v-else-if="collections.length > 0" class="empty-tip">
+          <el-empty description="请选择一个数据模型查看数据" />
         </div>
       </div>
 
@@ -1254,7 +1268,33 @@
         <el-button type="primary" @click="importDocuments" :loading="importLoading" :disabled="importPreview.length === 0">导入 ({{ importPreview.length }} 条)</el-button>
       </template>
     </el-dialog>
-
+    
+    <!-- 数据管理页面的新增数据对话框 -->
+    <el-dialog v-model="showAddDocumentDialog" :title="editingDocument ? '编辑数据' : '新增数据'" width="600px">
+      <el-form :model="documentForm" :rules="documentFormRules" ref="documentFormRef" label-width="120px">
+        <el-form-item v-for="field in selectedCollection?.fields" :key="field.name" :label="field.display_name || field.name" :prop="field.name" :required="field.required">
+          <!-- 字符串类型 -->
+          <el-input v-if="field.type === 'string'" v-model="documentForm[field.name]" :placeholder="'请输入' + (field.display_name || field.name)" />
+          <!-- 数字类型 -->
+          <el-input-number v-else-if="field.type === 'number'" v-model="documentForm[field.name]" :placeholder="'请输入' + (field.display_name || field.name)" style="width: 100%" />
+          <!-- 布尔类型 -->
+          <el-switch v-else-if="field.type === 'boolean'" v-model="documentForm[field.name]" />
+          <!-- 数组类型 -->
+          <div v-else-if="field.type === 'array'" style="width: 100%">
+            <el-tag v-for="(item, index) in (documentForm[field.name] || [])" :key="index" closable @close="removeArrayItem(field.name, index)" style="margin-right: 8px; margin-bottom: 8px">{{ item }}</el-tag>
+            <el-input v-model="arrayInputTemp[field.name]" placeholder="输入后按回车添加" style="width: 150px" @keyup.enter="addArrayItem(field.name)" />
+          </div>
+          <!-- 对象类型 -->
+          <el-input v-else-if="field.type === 'object'" v-model="documentForm[field.name]" type="textarea" :rows="3" placeholder="请输入JSON格式数据" />
+          <!-- 默认文本 -->
+          <el-input v-else v-model="documentForm[field.name]" :placeholder="'请输入' + (field.display_name || field.name)" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showAddDocumentDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveDocumentFromDataManage" :loading="documentSaving">保存</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 新建事件定义对话框 -->
     <el-dialog v-model="showEventDefDialog" title="新建事件定义" width="600px">
@@ -1340,7 +1380,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import wsClient from '@/utils/websocket'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as echarts from 'echarts'
@@ -1384,7 +1424,7 @@ const props = defineProps({
 // 菜单配置
 const menuItems = [
   { key: 'overview', label: '数据概览', icon: House },
-  { key: 'datamodel', label: '数据模型', icon: Grid },
+  { key: 'datamanage', label: '数据管理', icon: Grid },
   { key: 'users', label: '用户管理', icon: User },
   { key: 'messages', label: '消息推送', icon: Bell },
   { key: 'storage', label: '存储服务', icon: FolderOpened },
@@ -1416,6 +1456,11 @@ let moduleChart = null
 const collectionSearch = ref('')
 const collections = ref([])
 const collectionLoading = ref(false)
+const selectedCollectionId = ref(null)
+const selectedCollection = computed(() => {
+  if (!selectedCollectionId.value) return null
+  return collections.value.find(c => c.id === selectedCollectionId.value)
+})
 const showCollectionDialog = ref(false)
 const collectionForm = ref({
   name: '',
@@ -1448,6 +1493,7 @@ const documentFormRef = ref(null)
 const editingDocument = ref(null)
 const documentSaving = ref(false)
 const arrayInputTemp = ref({})
+const showAddDocumentDialog = ref(false)
 const showImportDialog = ref(false)
 const importPreview = ref([])
 const importLoading = ref(false)
@@ -1676,10 +1722,11 @@ const viewCollectionData = async (collection) => {
 }
 
 const fetchDocuments = async () => {
-  if (!currentCollection.value) return
+  const collection = selectedCollection.value || currentCollection.value
+  if (!collection) return
   documentLoading.value = true
   try {
-    let url = `/api/v1/baas/apps/${props.appId}/data/${currentCollection.value.name}?page=${documentPage.value}&size=${documentPageSize.value}`
+    let url = `/api/v1/baas/apps/${props.appId}/data/${collection.name}?page=${documentPage.value}&size=${documentPageSize.value}`
     if (documentSearch.value) {
       url += `&search=${encodeURIComponent(documentSearch.value)}`
     }
@@ -1698,6 +1745,23 @@ const fetchDocuments = async () => {
   } finally {
     documentLoading.value = false
   }
+}
+
+// 选择数据模型时的处理
+const onCollectionSelect = (collectionId) => {
+  selectedCollectionId.value = collectionId
+  documentPage.value = 1
+  documentSearch.value = ''
+  fetchDocuments()
+}
+
+// 格式化字段值
+const formatFieldValue = (value, type) => {
+  if (value === null || value === undefined) return '-'
+  if (type === 'boolean') return value ? '是' : '否'
+  if (type === 'array') return Array.isArray(value) ? value.join(', ') : String(value)
+  if (type === 'object') return typeof value === 'object' ? JSON.stringify(value) : String(value)
+  return String(value)
 }
 
 // 文档选择处理
@@ -1741,6 +1805,35 @@ const openDocumentForm = (doc = null) => {
   }
   
   showDocumentFormDialog.value = true
+}
+
+// 编辑文档（从数据管理页面）
+const editDocument = (doc) => {
+  editingDocument.value = doc
+  documentForm.value = {}
+  
+  const collection = selectedCollection.value
+  if (collection?.fields) {
+    collection.fields.forEach(field => {
+      if (doc.data && doc.data[field.name] !== undefined) {
+        if (field.type === 'object' && typeof doc.data[field.name] === 'object') {
+          documentForm.value[field.name] = JSON.stringify(doc.data[field.name], null, 2)
+        } else {
+          documentForm.value[field.name] = doc.data[field.name]
+        }
+      } else if (field.type === 'boolean') {
+        documentForm.value[field.name] = false
+      } else if (field.type === 'array') {
+        documentForm.value[field.name] = []
+      } else if (field.type === 'number') {
+        documentForm.value[field.name] = 0
+      } else {
+        documentForm.value[field.name] = ''
+      }
+    })
+  }
+  
+  showAddDocumentDialog.value = true
 }
 
 // 数组字段添加项
@@ -1813,12 +1906,72 @@ const saveDocument = async () => {
   }
 }
 
+// 从数据管理页面保存文档
+const saveDocumentFromDataManage = async () => {
+  if (!documentFormRef.value) return
+  
+  try {
+    await documentFormRef.value.validate()
+  } catch {
+    return
+  }
+  
+  documentSaving.value = true
+  try {
+    const collection = selectedCollection.value
+    if (!collection) {
+      ElMessage.error('请先选择数据模型')
+      return
+    }
+    
+    // 处理对象类型字段
+    const formData = { ...documentForm.value }
+    collection.fields?.forEach(field => {
+      if (field.type === 'object' && typeof formData[field.name] === 'string') {
+        try {
+          formData[field.name] = JSON.parse(formData[field.name])
+        } catch {
+          // 保持原样
+        }
+      }
+    })
+    
+    const url = editingDocument.value 
+      ? `/api/v1/baas/apps/${props.appId}/data/${collection.name}/${editingDocument.value.id}`
+      : `/api/v1/baas/apps/${props.appId}/data/${collection.name}`
+    
+    const res = await fetch(url, {
+      method: editingDocument.value ? 'PUT' : 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ data: formData })
+    })
+    
+    const data = await res.json()
+    if (data.code === 0) {
+      ElMessage.success(editingDocument.value ? '更新成功' : '创建成功')
+      showAddDocumentDialog.value = false
+      await fetchDocuments()
+    } else {
+      ElMessage.error(data.message || '保存失败')
+    }
+  } catch (error) {
+    console.error('保存文档失败:', error)
+    ElMessage.error('保存失败')
+  } finally {
+    documentSaving.value = false
+  }
+}
+
 // 删除单个文档
 const deleteDocument = async (doc) => {
   try {
     await ElMessageBox.confirm('确定要删除这条数据吗？', '删除确认', { type: 'warning' })
     
-    const res = await fetch(`/api/v1/baas/apps/${props.appId}/data/${currentCollection.value.name}/${doc.id}`, {
+    const collection = selectedCollection.value || currentCollection.value
+    const res = await fetch(`/api/v1/baas/apps/${props.appId}/data/${collection.name}/${doc.id}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -1900,6 +2053,39 @@ const exportDocuments = async () => {
   }
 }
 
+// 导出数据（从数据管理页面）
+const exportData = async () => {
+  const collection = selectedCollection.value
+  if (!collection) {
+    ElMessage.error('请先选择数据模型')
+    return
+  }
+  
+  try {
+    // 获取所有数据
+    const res = await fetch(`/api/v1/baas/apps/${props.appId}/data/${collection.name}?page=1&size=10000`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    const data = await res.json()
+    if (data.code === 0) {
+      const exportDataList = (data.data.list || []).map(doc => doc.data)
+      const blob = new Blob([JSON.stringify(exportDataList, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${collection.name}_${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      ElMessage.success(`导出成功，共 ${exportDataList.length} 条数据`)
+    }
+  } catch (error) {
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败')
+  }
+}
+
 // 处理导入文件选择
 const handleImportFileChange = (file) => {
   const reader = new FileReader()
@@ -1924,6 +2110,12 @@ const handleImportFileChange = (file) => {
 const importDocuments = async () => {
   if (importPreview.value.length === 0) return
   
+  const collection = selectedCollection.value || currentCollection.value
+  if (!collection) {
+    ElMessage.error('请先选择数据模型')
+    return
+  }
+  
   importLoading.value = true
   let successCount = 0
   let failCount = 0
@@ -1931,7 +2123,7 @@ const importDocuments = async () => {
   try {
     for (const item of importPreview.value) {
       try {
-        const res = await fetch(`/api/v1/baas/apps/${props.appId}/data/${currentCollection.value.name}`, {
+        const res = await fetch(`/api/v1/baas/apps/${props.appId}/data/${collection.name}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -3180,7 +3372,7 @@ watch(currentMenu, (val) => {
   if (val === 'overview') {
     setTimeout(initCharts, 100)
     loadData()
-  } else if (val === 'datamodel') {
+  } else if (val === 'datamanage') {
     fetchCollections()
   } else if (val === 'users') {
     fetchUserList()
@@ -3801,5 +3993,59 @@ watch(() => props.initialMenu, (newVal) => {
     gap: 8px;
     align-items: center;
   }
+}
+
+// 数据管理页面样式
+.data-manage-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  
+  .tip-text {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #909399;
+    font-size: 14px;
+    
+    a {
+      color: #409eff;
+      text-decoration: none;
+      
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
+.data-operation-area {
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    
+    .search-area {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .action-area {
+      display: flex;
+      gap: 8px;
+    }
+  }
+}
+
+.pagination-area {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.empty-tip {
+  padding: 60px 0;
 }
 </style>
