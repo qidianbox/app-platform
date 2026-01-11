@@ -806,3 +806,42 @@
   - 审计日志页面添加"清理日志"按钮
   - 显示当前配置和清理历史
   - 支持自定义保留天数
+
+
+## 2026-01-11 BaaS数据即服务功能开发
+
+### 第一阶段：数据即服务（核心基础）
+
+#### 代码管理
+- [ ] 将代码提交到GitHub仓库
+
+#### 数据模型管理
+- [ ] 创建data_collections表（数据模型定义）
+- [ ] 创建data_documents表（数据存储）
+- [ ] 实现数据模型CRUD API
+- [ ] 支持字段类型：文本、数字、布尔、日期、数组、对象、关联
+- [ ] 支持字段验证规则配置
+
+#### 动态API生成
+- [ ] 根据数据模型自动生成REST API
+- [ ] GET /api/v1/apps/{app_id}/collections/{name} - 查询列表
+- [ ] POST /api/v1/apps/{app_id}/collections/{name} - 创建
+- [ ] GET /api/v1/apps/{app_id}/collections/{name}/{id} - 查询详情
+- [ ] PUT /api/v1/apps/{app_id}/collections/{name}/{id} - 更新
+- [ ] DELETE /api/v1/apps/{app_id}/collections/{name}/{id} - 删除
+
+#### 权限控制
+- [ ] 配置数据集合的访问权限（公开/登录用户/指定角色）
+- [ ] 字段级别权限控制
+
+#### 数据查询
+- [ ] 支持筛选条件
+- [ ] 支持排序
+- [ ] 支持分页
+- [ ] 支持关联查询
+
+#### 前端界面
+- [ ] 数据模型列表页面
+- [ ] 数据模型创建/编辑页面
+- [ ] 字段配置可视化界面
+- [ ] 数据浏览和管理页面
