@@ -8,6 +8,8 @@
           :key="item.key"
           class="menu-item"
           :class="{ active: currentMenu === item.key }"
+          :data-testid="'menu-' + item.key"
+          :data-menu-key="item.key"
           @click="currentMenu = item.key"
         >
           <el-icon><component :is="item.icon" /></el-icon>
