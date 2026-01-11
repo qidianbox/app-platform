@@ -21,9 +21,17 @@ class WebSocketClient {
    * @param {string} userId - 用户ID
    */
   connect(appId, userId) {
+    // 检查appId是否有效
+    if (!appId || appId === '') {
+      console.warn('[WebSocket] appId is empty, skipping connection')
+      return
+    }
+    
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    // 使用当前主机，Vite会代理WebSocket连接到后端
     const host = window.location.host
     this.url = `${protocol}//${host}/api/v1/ws?app_id=${appId}&user_id=${userId || ''}`
+    console.log('[WebSocket] Connecting to:', this.url)
 
     this.createConnection()
   }

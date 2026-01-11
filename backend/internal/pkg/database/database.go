@@ -22,10 +22,11 @@ var db *gorm.DB
 func InitDB(cfg *config.DatabaseConfig) error {
 	var dsn string
 	
-	// 检查是否有DATABASE_URL环境变量（Manus平台数据库）
+	// 优先使用DATABASE_URL环境变量（Manus平台TiDB数据库）
+	// 如果没有设置，则回退到配置文件（阿里云MySQL等）
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL != "" {
-		log.Println("[Database] Using DATABASE_URL from environment")
+		log.Println("[Database] Using DATABASE_URL from environment (Manus TiDB)")
 		// 解析DATABASE_URL格式: mysql://user:pass@host:port/dbname?tls=...
 		var err error
 		dsn, err = parseDatabaseURL(databaseURL)
@@ -34,10 +35,11 @@ func InitDB(cfg *config.DatabaseConfig) error {
 		}
 		log.Printf("[Database] DSN: %s", maskPassword(dsn))
 	} else {
-		log.Println("[Database] Using config file database settings")
-		// 使用配置文件中的数据库配置
+		log.Println("[Database] Using config file database settings (MySQL)")
+		// 使用配置文件中的数据库配置（适用于阿里云等自建MySQL）
 		dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 			cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DBName)
+		log.Printf("[Database] DSN: %s", maskPassword(dsn))
 	}
 
 	var err error

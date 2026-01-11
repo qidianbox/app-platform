@@ -14,9 +14,12 @@ import (
 	moduleapi "app-platform-backend/internal/api/v1/module"
 	statsapi "app-platform-backend/internal/api/v1/stats"
 	"app-platform-backend/internal/api/v1/baas"
+	"app-platform-backend/internal/api/v1/system"
+	wsapi "app-platform-backend/internal/api/v1/websocket"
 	"app-platform-backend/internal/config"
 	"app-platform-backend/internal/middleware"
 	"app-platform-backend/internal/pkg/database"
+	"app-platform-backend/internal/scheduler"
 
 	// 导入所有功能模块（通过 import 的副作用触发模块注册）
 	_ "app-platform-backend/modules"
@@ -44,6 +47,15 @@ func main() {
 	middleware.InitAuditDB(database.GetDB())
 	log.Println("[Main] Audit logging initialized")
 
+	// 初始化并启动审计日志清理调度器
+	auditCleanupScheduler := scheduler.InitAuditCleanupScheduler(database.GetDB(), scheduler.AuditCleanupConfig{
+		RetentionDays: 90,  // 保留最近90天的日志
+		CleanupHour:   3,   // 每天凌晨3点执行清理
+		BatchSize:     1000, // 每批删除1000条
+	})
+	auditCleanupScheduler.Start()
+	log.Println("[Main] Audit log cleanup scheduler started (retention: 90 days, cleanup at 03:00)")
+
 	// 设置Gin模式
 	gin.SetMode(cfg.Server.Mode)
 
@@ -53,6 +65,7 @@ func main() {
 	// 中间件
 	r.Use(middleware.CORSMiddleware(&cfg.CORS))
 	r.Use(middleware.LoggerMiddleware())
+	r.Use(middleware.SecurityHeadersMiddleware()) // 添加HTTP安全响应头
 
 	// 初始化全局限流器 (100 QPS/IP, 突发200请求)
 	middleware.InitRateLimiter(200, 100)
@@ -81,9 +94,15 @@ func main() {
 	// ========================================
 	v1 := r.Group("/api/v1")
 	{
-		// 公开接口（无需认证）
-		// 登录接口使用更严格的限流 (10 QPS/IP, 1分钟窗口)
-		v1.POST("/admin/login", middleware.APIRateLimitMiddleware(10, time.Minute), admin.Login)
+// 公开接口（无需认证）
+				// 登录接口使用更严格的限流 (5次/分钟/IP，防止暴力破解)
+				v1.POST("/admin/login", middleware.APIRateLimitMiddleware(5, time.Minute), admin.Login)
+				
+				// 错误报告接口（限流30次/分钟/IP）
+				v1.POST("/system/error-report", middleware.APIRateLimitMiddleware(30, time.Minute), system.ErrorReportHandler)
+			
+			// WebSocket连接端点（无需JWT认证，通过URL参数传递token）
+			v1.GET("/ws", wsapi.HandleWebSocket)
 
 		// 需要认证的接口
 		auth := v1.Group("")

@@ -1,0 +1,406 @@
+{
+  "timestamp": "20260110_181626",
+  "total_tests": 40,
+  "results": [
+    {
+      "page": "登录页",
+      "device": "Desktop_1920x1080",
+      "status": "failed",
+      "diff_percentage": 8.84,
+      "screenshot": "/home/ubuntu/app-platform/test_results/visual_test/current/登录页_Desktop_1920x1080_20260110_181626.png",
+      "baseline": "/home/ubuntu/app-platform/test_results/visual_test/baseline/登录页_Desktop_1920x1080_20260110_133615.png",
+      "diff_image": "/home/ubuntu/app-platform/test_results/visual_test/diff/diff_登录页_Desktop_1920x1080_20260110_181626.png",
+      "error": ""
+    },
+    {
+      "page": "APP列表页",
+      "device": "Desktop_1920x1080",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "APP详情_概览",
+      "device": "Desktop_1920x1080",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "APP详情_基础配置",
+      "device": "Desktop_1920x1080",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "APP详情_工作台",
+      "device": "Desktop_1920x1080",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_监控告警",
+      "device": "Desktop_1920x1080",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_审计日志",
+      "device": "Desktop_1920x1080",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_消息推送",
+      "device": "Desktop_1920x1080",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_版本管理",
+      "device": "Desktop_1920x1080",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_用户管理",
+      "device": "Desktop_1920x1080",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "登录页",
+      "device": "Laptop_1366x768",
+      "status": "failed",
+      "diff_percentage": 7.03,
+      "screenshot": "/home/ubuntu/app-platform/test_results/visual_test/current/登录页_Laptop_1366x768_20260110_181626.png",
+      "baseline": "/home/ubuntu/app-platform/test_results/visual_test/baseline/登录页_Laptop_1366x768_20260110_133615.png",
+      "diff_image": "/home/ubuntu/app-platform/test_results/visual_test/diff/diff_登录页_Laptop_1366x768_20260110_181626.png",
+      "error": ""
+    },
+    {
+      "page": "APP列表页",
+      "device": "Laptop_1366x768",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "APP详情_概览",
+      "device": "Laptop_1366x768",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "APP详情_基础配置",
+      "device": "Laptop_1366x768",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "APP详情_工作台",
+      "device": "Laptop_1366x768",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_监控告警",
+      "device": "Laptop_1366x768",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_审计日志",
+      "device": "Laptop_1366x768",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_消息推送",
+      "device": "Laptop_1366x768",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_版本管理",
+      "device": "Laptop_1366x768",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_用户管理",
+      "device": "Laptop_1366x768",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "登录页",
+      "device": "Tablet_768x1024",
+      "status": "passed",
+      "diff_percentage": 0.0,
+      "screenshot": "/home/ubuntu/app-platform/test_results/visual_test/current/登录页_Tablet_768x1024_20260110_181626.png",
+      "baseline": "/home/ubuntu/app-platform/test_results/visual_test/baseline/登录页_Tablet_768x1024_20260110_133615.png",
+      "diff_image": "",
+      "error": ""
+    },
+    {
+      "page": "APP列表页",
+      "device": "Tablet_768x1024",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "APP详情_概览",
+      "device": "Tablet_768x1024",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "APP详情_基础配置",
+      "device": "Tablet_768x1024",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "APP详情_工作台",
+      "device": "Tablet_768x1024",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_监控告警",
+      "device": "Tablet_768x1024",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_审计日志",
+      "device": "Tablet_768x1024",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_消息推送",
+      "device": "Tablet_768x1024",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_版本管理",
+      "device": "Tablet_768x1024",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_用户管理",
+      "device": "Tablet_768x1024",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "登录页",
+      "device": "Mobile_375x667",
+      "status": "passed",
+      "diff_percentage": 0.0,
+      "screenshot": "/home/ubuntu/app-platform/test_results/visual_test/current/登录页_Mobile_375x667_20260110_181626.png",
+      "baseline": "/home/ubuntu/app-platform/test_results/visual_test/baseline/登录页_Mobile_375x667_20260110_133615.png",
+      "diff_image": "",
+      "error": ""
+    },
+    {
+      "page": "APP列表页",
+      "device": "Mobile_375x667",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "APP详情_概览",
+      "device": "Mobile_375x667",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "APP详情_基础配置",
+      "device": "Mobile_375x667",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "APP详情_工作台",
+      "device": "Mobile_375x667",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_监控告警",
+      "device": "Mobile_375x667",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_审计日志",
+      "device": "Mobile_375x667",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_消息推送",
+      "device": "Mobile_375x667",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_版本管理",
+      "device": "Mobile_375x667",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    },
+    {
+      "page": "工作台_用户管理",
+      "device": "Mobile_375x667",
+      "status": "skipped",
+      "diff_percentage": 0,
+      "screenshot": "",
+      "baseline": "",
+      "diff_image": "",
+      "error": "登录失败，跳过需要认证的页面"
+    }
+  ]
+}

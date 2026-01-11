@@ -1,0 +1,73 @@
+{
+  "query": "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3HmF555sZ6wXsVo.885fbf394348 --database cSZcQBnZuHpLU79S85jppV --execute SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE();",
+  "rows": [
+    {
+      "TABLE_NAME": "__drizzle_migrations"
+    },
+    {
+      "TABLE_NAME": "users"
+    },
+    {
+      "TABLE_NAME": "admins"
+    },
+    {
+      "TABLE_NAME": "apps"
+    },
+    {
+      "TABLE_NAME": "module_templates"
+    },
+    {
+      "TABLE_NAME": "app_modules"
+    },
+    {
+      "TABLE_NAME": "app_users"
+    },
+    {
+      "TABLE_NAME": "messages"
+    },
+    {
+      "TABLE_NAME": "push_tasks"
+    },
+    {
+      "TABLE_NAME": "files"
+    },
+    {
+      "TABLE_NAME": "logs"
+    },
+    {
+      "TABLE_NAME": "events"
+    },
+    {
+      "TABLE_NAME": "configs"
+    },
+    {
+      "TABLE_NAME": "app_versions"
+    },
+    {
+      "TABLE_NAME": "monitor_metrics"
+    },
+    {
+      "TABLE_NAME": "alerts"
+    },
+    {
+      "TABLE_NAME": "app_module_configs"
+    },
+    {
+      "TABLE_NAME": "audit_logs"
+    },
+    {
+      "TABLE_NAME": "push_records"
+    },
+    {
+      "TABLE_NAME": "versions"
+    },
+    {
+      "TABLE_NAME": "monitor_alerts"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\n__drizzle_migrations\nusers\nadmins\napps\nmodule_templates\napp_modules\napp_users\nmessages\npush_tasks\nfiles\nlogs\nevents\nconfigs\napp_versions\nmonitor_metrics\nalerts\napp_module_configs\naudit_logs\npush_records\nversions\nmonitor_alerts\n",
+  "stderr": "",
+  "execution_time_ms": 201
+}

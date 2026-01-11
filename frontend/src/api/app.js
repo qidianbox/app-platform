@@ -48,7 +48,7 @@ export const getPushStats = (appId) => request.get('/push/stats', { params: { ap
 export const reportEvent = (data) => request.post('/events', data)
 export const batchReportEvents = (data) => request.post('/events/batch', data)
 export const getEventList = (params) => request.get('/events', { params })
-export const getEventStats = (appId) => request.get('/events/stats', { params: { app_id: appId } })
+export const getEventStats = (params) => request.get('/events/stats', { params })
 export const getFunnelAnalysis = (params) => request.get('/events/funnel', { params })
 
 // 监控告警
@@ -56,7 +56,7 @@ export const getMonitorMetrics = (params) => request.get('/monitor/metrics', { p
 export const reportMetrics = (data) => request.post('/monitor/metrics', data)
 export const getAlertList = (params) => request.get('/monitor/alerts', { params })
 export const createAlert = (data) => request.post('/monitor/alerts', data)
-export const getMonitorStats = (appId) => request.get('/monitor/stats', { params: { app_id: appId } })
+export const getMonitorStats = (params) => request.get('/monitor/stats', { params })
 
 // 配置管理
 export const getModuleConfig = (appId, moduleCode) => request.get('/configs', { params: { app_id: appId, module_code: moduleCode } })
@@ -72,7 +72,7 @@ export const uploadFile = (formData) => request.post('/files', formData, { heade
 export const getFileList = (params) => request.get('/files', { params })
 export const downloadFile = (id) => request.get(`/files/download/${id}`, { responseType: 'blob' })
 export const deleteFile = (id) => request.delete(`/files/${id}`)
-export const getFileStats = (appId) => request.get('/files/stats', { params: { app_id: appId } })
+export const getFileStats = (params) => request.get('/files/stats', { params })
 export const batchDeleteFiles = (ids) => request.post('/files/batch-delete', { ids })
 
 // 事件定义管理
@@ -84,7 +84,7 @@ export const deleteEventDefinition = (id) => request.delete(`/events/definitions
 // 告警规则管理
 export const updateAlert = (id, data) => request.put(`/monitor/alerts/${id}`, data)
 export const deleteAlert = (id) => request.delete(`/monitor/alerts/${id}`)
-export const getHealthCheck = () => request.get('/monitor/health')
+export const getHealthCheck = (params) => request.get('/monitor/health', { params })
 
 // 审计日志API
 export const getAuditLogs = (params) => request.get('/audit', { params })
