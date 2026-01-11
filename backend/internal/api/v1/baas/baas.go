@@ -28,6 +28,7 @@ type DataCollection struct {
 	CreatePerm  string          `json:"create_perm" gorm:"size:50;default:authenticated"`
 	UpdatePerm  string          `json:"update_perm" gorm:"size:50;default:creator"`
 	DeletePerm  string          `json:"delete_perm" gorm:"size:50;default:admin"`
+	IsGenerated bool            `json:"is_generated" gorm:"default:false"`
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
 }
@@ -74,6 +75,7 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 			apps.GET("/collections/:collectionId", h.GetCollection)
 			apps.PUT("/collections/:collectionId", h.UpdateCollection)
 			apps.DELETE("/collections/:collectionId", h.DeleteCollection)
+			apps.POST("/collections/:collectionId/generate", h.GenerateFeature)
 
 			// 数据文档管理
 			apps.GET("/data/:collectionName", h.ListDocuments)
@@ -311,6 +313,29 @@ func (h *Handler) DeleteCollection(c *gin.Context) {
 	}
 
 	success(c, nil)
+}
+
+// GenerateFeature 生成功能（将数据模型标记为已生成，工作台将显示对应的功能页面）
+func (h *Handler) GenerateFeature(c *gin.Context) {
+	appID, _ := strconv.ParseUint(c.Param("appId"), 10, 64)
+	collectionID, _ := strconv.ParseUint(c.Param("collectionId"), 10, 64)
+
+	var collection DataCollection
+	if err := h.db.Where("id = ? AND app_id = ?", collectionID, appID).First(&collection).Error; err != nil {
+		fail(c, 404, "数据模型不存在")
+		return
+	}
+
+	// 更新is_generated状态
+	if err := h.db.Model(&collection).Update("is_generated", true).Error; err != nil {
+		fail(c, 500, "生成功能失败: "+err.Error())
+		return
+	}
+
+	success(c, gin.H{
+		"message": "功能生成成功",
+		"collection": collection,
+	})
 }
 
 // ListDocuments 获取文档列表

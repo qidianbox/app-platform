@@ -114,27 +114,11 @@
         </div>
       </div>
 
-      <!-- 数据管理 -->
-      <div v-else-if="currentMenu === 'datamanage'" class="content-section">
+      <!-- 动态功能页面：已生成的数据模型功能 -->
+      <div v-else-if="currentMenu.startsWith('collection_')" class="content-section">
         <div class="section-header">
-          <h2>数据管理</h2>
-          <p>查看和管理各数据模型中的数据</p>
-        </div>
-        
-        <!-- 数据模型选择 -->
-        <div class="data-manage-header">
-          <el-select v-model="selectedCollectionId" placeholder="选择数据模型" style="width: 300px" @change="onCollectionSelect">
-            <el-option 
-              v-for="collection in collections" 
-              :key="collection.id" 
-              :label="collection.display_name || collection.name" 
-              :value="collection.id"
-            />
-          </el-select>
-          <div class="tip-text" v-if="collections.length === 0">
-            <el-icon><Warning /></el-icon>
-            暂无数据模型，请先在<router-link :to="`/apps/${appId}/config`">配置中心</router-link>创建数据模型
-          </div>
+          <h2>{{ currentCollectionInfo?.display_name || currentCollectionInfo?.name }}</h2>
+          <p>{{ currentCollectionInfo?.description || '管理该数据模型中的数据' }}</p>
         </div>
         
         <!-- 数据操作区域 -->
@@ -202,11 +186,6 @@
               @current-change="fetchDocuments"
             />
           </div>
-        </div>
-        
-        <!-- 未选择数据模型时的提示 -->
-        <div v-else-if="collections.length > 0" class="empty-tip">
-          <el-empty description="请选择一个数据模型查看数据" />
         </div>
       </div>
 
@@ -1421,10 +1400,9 @@ const props = defineProps({
   }
 })
 
-// 菜单配置
-const menuItems = [
+// 基础菜单配置
+const baseMenuItems = [
   { key: 'overview', label: '数据概览', icon: House },
-  { key: 'datamanage', label: '数据管理', icon: Grid },
   { key: 'users', label: '用户管理', icon: User },
   { key: 'messages', label: '消息推送', icon: Bell },
   { key: 'storage', label: '存储服务', icon: FolderOpened },
@@ -1434,6 +1412,26 @@ const menuItems = [
   { key: 'versions', label: '版本管理', icon: Promotion },
   { key: 'audit', label: '审计日志', icon: Lock }
 ]
+
+// 动态菜单：基础菜单 + 已生成功能的数据模型
+const menuItems = computed(() => {
+  const generatedCollections = collections.value.filter(c => c.is_generated)
+  const dynamicMenus = generatedCollections.map(c => ({
+    key: `collection_${c.id}`,
+    label: c.display_name || c.name,
+    icon: Grid,
+    isGenerated: true,
+    collectionId: c.id,
+    collectionName: c.name
+  }))
+  
+  // 在数据概览后插入动态菜单
+  const result = [...baseMenuItems]
+  if (dynamicMenus.length > 0) {
+    result.splice(1, 0, ...dynamicMenus)
+  }
+  return result
+})
 
 const currentMenu = ref(props.initialMenu || 'overview')
 const chartPeriod = ref('7d')
@@ -1457,7 +1455,18 @@ const collectionSearch = ref('')
 const collections = ref([])
 const collectionLoading = ref(false)
 const selectedCollectionId = ref(null)
+// 当前菜单对应的数据模型信息（用于动态功能页面）
+const currentCollectionInfo = computed(() => {
+  if (!currentMenu.value.startsWith('collection_')) return null
+  const collectionId = parseInt(currentMenu.value.replace('collection_', ''))
+  return collections.value.find(c => c.id === collectionId)
+})
+
+// 选中的数据模型（用于数据操作）
 const selectedCollection = computed(() => {
+  // 优先使用动态菜单对应的数据模型
+  if (currentCollectionInfo.value) return currentCollectionInfo.value
+  // 否则使用手动选择的数据模型
   if (!selectedCollectionId.value) return null
   return collections.value.find(c => c.id === selectedCollectionId.value)
 })
@@ -3327,10 +3336,16 @@ onMounted(() => {
   setTimeout(initCharts, 100)
   // 只有当appId有效时才加载数据
   if (props.appId && props.appId !== '') {
+    // 首先加载数据模型列表（用于动态菜单）
+    fetchCollections()
+    
     // 根据当前菜单加载对应数据
     const menu = props.initialMenu || currentMenu.value
     if (menu === 'overview') {
       loadData()
+    } else if (menu.startsWith('collection_')) {
+      // 动态功能页面
+      setTimeout(() => fetchDocuments(), 100)
     } else if (menu === 'users') {
       fetchUserList()
     } else if (menu === 'logs') {
@@ -3372,8 +3387,9 @@ watch(currentMenu, (val) => {
   if (val === 'overview') {
     setTimeout(initCharts, 100)
     loadData()
-  } else if (val === 'datamanage') {
-    fetchCollections()
+  } else if (val.startsWith('collection_')) {
+    // 动态功能页面：加载对应数据模型的数据
+    fetchDocuments()
   } else if (val === 'users') {
     fetchUserList()
   } else if (val === 'logs') {

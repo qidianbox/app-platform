@@ -1,0 +1,154 @@
+{
+  "query": "DESCRIBE data_collections;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3HmF555sZ6wXsVo.885fbf394348 --database cSZcQBnZuHpLU79S85jppV --execute DESCRIBE data_collections;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "bigint(20) unsigned",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "app_id",
+      "Type": "bigint(20) unsigned",
+      "Null": "NO",
+      "Key": "MUL",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "name",
+      "Type": "varchar(50)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "display_name",
+      "Type": "varchar(100)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "description",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "schema",
+      "Type": "json",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "indexes",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "permissions",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "hooks",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "status",
+      "Type": "tinyint(4)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "created_by",
+      "Type": "bigint(20) unsigned",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "created_at",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updated_at",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "Field": "fields",
+      "Type": "json",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "read_perm",
+      "Type": "varchar(50)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "public",
+      "Extra": ""
+    },
+    {
+      "Field": "create_perm",
+      "Type": "varchar(50)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "authenticated",
+      "Extra": ""
+    },
+    {
+      "Field": "update_perm",
+      "Type": "varchar(50)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "creator",
+      "Extra": ""
+    },
+    {
+      "Field": "delete_perm",
+      "Type": "varchar(50)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "admin",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tbigint(20) unsigned\tNO\tPRI\tNULL\tauto_increment\napp_id\tbigint(20) unsigned\tNO\tMUL\tNULL\t\nname\tvarchar(50)\tNO\t\tNULL\t\ndisplay_name\tvarchar(100)\tNO\t\tNULL\t\ndescription\ttext\tYES\t\tNULL\t\nschema\tjson\tNO\t\tNULL\t\nindexes\tjson\tYES\t\tNULL\t\npermissions\tjson\tYES\t\tNULL\t\nhooks\tjson\tYES\t\tNULL\t\nstatus\ttinyint(4)\tYES\t\t1\t\ncreated_by\tbigint(20) unsigned\tYES\t\tNULL\t\ncreated_at\ttimestamp\tYES\t\tCURRENT_TIMESTAMP\t\nupdated_at\ttimestamp\tYES\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nfields\tjson\tYES\t\tNULL\t\nread_perm\tvarchar(50)\tYES\t\tpublic\t\ncreate_perm\tvarchar(50)\tYES\t\tauthenticated\t\nupdate_perm\tvarchar(50)\tYES\t\tcreator\t\ndelete_perm\tvarchar(50)\tYES\t\tadmin\t\n",
+  "stderr": "",
+  "execution_time_ms": 142
+}

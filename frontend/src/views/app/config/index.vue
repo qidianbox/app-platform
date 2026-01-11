@@ -356,8 +356,8 @@
                     <h3>{{ collection.display_name || collection.name }}</h3>
                     <span class="card-name">{{ collection.name }}</span>
                   </div>
-                  <el-tag :type="collection.status === 1 ? 'success' : 'info'" size="small">
-                    {{ collection.status === 1 ? '已启用' : '已禁用' }}
+                  <el-tag :type="collection.is_generated ? 'success' : 'warning'" size="small">
+                    {{ collection.is_generated ? '已生成' : '未生成' }}
                   </el-tag>
                 </div>
                 <p class="card-desc">{{ collection.description || '暂无描述' }}</p>
@@ -366,6 +366,22 @@
                   <span>文档数: {{ collection.document_count || 0 }}</span>
                 </div>
                 <div class="card-actions">
+                  <el-button 
+                    v-if="!collection.is_generated" 
+                    size="small" 
+                    type="success" 
+                    @click="generateFeature(collection)"
+                  >
+                    <el-icon><MagicStick /></el-icon>生成功能
+                  </el-button>
+                  <el-button 
+                    v-else 
+                    size="small" 
+                    type="primary" 
+                    @click="goToWorkspace(collection)"
+                  >
+                    <el-icon><View /></el-icon>查看功能
+                  </el-button>
                   <el-button size="small" @click="editCollection(collection)">
                     <el-icon><Edit /></el-icon>编辑
                   </el-button>
@@ -1816,7 +1832,7 @@ import {
   CreditCard, ChatDotRound, DataLine, Document, Monitor, 
   FolderOpened, Tools, Box, Grid, Warning, CopyDocument,
   Bell, DataAnalysis, Promotion, Lock, Plus, Edit, Delete, Search,
-  Download, Upload, MagicStick, Cpu, Files
+  Download, Upload, MagicStick, Cpu, Files, View
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
@@ -2329,6 +2345,45 @@ const copyApiEndpoint = (collection) => {
   const endpoint = `/api/v1/baas/apps/${appId.value}/data/${collection.name}`
   navigator.clipboard.writeText(endpoint)
   ElMessage.success('API端点已复制到剪贴板')
+}
+
+// 生成功能
+const generateFeature = async (collection) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要为数据模型 "${collection.display_name || collection.name}" 生成功能吗？\n\n生成后将在工作台中创建对应的数据管理页面。`,
+      '生成功能',
+      {
+        confirmButtonText: '确定生成',
+        cancelButtonText: '取消',
+        type: 'info'
+      }
+    )
+    
+    // 调用后端API更新is_generated状态
+    await request.post(`/baas/apps/${appId.value}/collections/${collection.id}/generate`)
+    
+    ElMessage.success('功能生成成功！可以在工作台中使用了')
+    // 刷新列表
+    fetchCollections()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('生成功能失败:', error)
+      ElMessage.error('生成功能失败')
+    }
+  }
+}
+
+// 跳转到工作台查看功能
+const goToWorkspace = (collection) => {
+  activeTab.value = 'workspace'
+  // 通过事件或状态通知Workspace组件切换到对应的数据模型
+  setTimeout(() => {
+    // 触发自定义事件通知Workspace组件
+    window.dispatchEvent(new CustomEvent('switch-to-collection', { 
+      detail: { collectionId: collection.id, collectionName: collection.name } 
+    }))
+  }, 100)
 }
 
 // 重置表单

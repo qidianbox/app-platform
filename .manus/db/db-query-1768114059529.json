@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE data_collections ADD COLUMN is_generated TINYINT(1) DEFAULT 0 COMMENT '是否已生成功能';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3HmF555sZ6wXsVo.885fbf394348 --database cSZcQBnZuHpLU79S85jppV --execute ALTER TABLE data_collections ADD COLUMN is_generated TINYINT(1) DEFAULT 0 COMMENT '是否已生成功能';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 540
+}
