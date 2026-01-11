@@ -1413,10 +1413,11 @@ const baseMenuItems = [
   { key: 'audit', label: '审计日志', icon: Lock }
 ]
 
-// 动态菜单：基础菜单 + 已生成功能的数据模型
+// 动态菜单：基础菜单 + 已生成且已开启显示的数据模型
 const menuItems = computed(() => {
-  const generatedCollections = collections.value.filter(c => c.is_generated)
-  const dynamicMenus = generatedCollections.map(c => ({
+  // 只显示 is_generated=true 且 is_visible=true 的功能
+  const visibleCollections = collections.value.filter(c => c.is_generated && c.is_visible)
+  const dynamicMenus = visibleCollections.map(c => ({
     key: `collection_${c.id}`,
     label: c.display_name || c.name,
     icon: Grid,

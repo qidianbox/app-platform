@@ -159,6 +159,20 @@
             <el-icon aria-hidden="true"><Setting /></el-icon>
             <span>基础配置</span>
           </div>
+          
+          <!-- 菜单管理 -->
+          <div 
+            class="sidebar-item"
+            :class="{ active: currentPage === 'menu_management' }"
+            @click="switchPage('menu_management')"
+            role="menuitem"
+            tabindex="0"
+            aria-label="菜单管理"
+            @keydown.enter="switchPage('menu_management')"
+          >
+            <el-icon aria-hidden="true"><Menu /></el-icon>
+            <span>菜单管理</span>
+          </div>
 
         <!-- 模块分组 -->
         <template v-for="group in moduleGroups" :key="group.key">
@@ -842,6 +856,78 @@
               <el-button @click="resetBasicConfig">重置</el-button>
             </el-form-item>
           </el-form>
+        </div>
+
+        <!-- 菜单管理页面 -->
+        <div v-else-if="currentPage === 'menu_management'" class="page-content">
+          <div class="page-header">
+            <div>
+              <h2 class="page-title">菜单管理</h2>
+              <p class="page-desc">管理工作台侧边栏显示的功能菜单，只有开启的菜单才会在工作台中显示</p>
+            </div>
+          </div>
+          
+          <!-- 已生成功能列表 -->
+          <el-card class="menu-list-card">
+            <template #header>
+              <div class="card-header">
+                <span>已生成的功能</span>
+                <span class="hint-text">点击开关控制是否在工作台显示</span>
+              </div>
+            </template>
+            
+            <el-table :data="generatedCollections" style="width: 100%" v-loading="menuLoading">
+              <el-table-column prop="display_name" label="功能名称" min-width="150">
+                <template #default="{ row }">
+                  <div class="menu-name">
+                    <el-icon><Document /></el-icon>
+                    <span>{{ row.display_name || row.name }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="name" label="模型标识" width="150" />
+              <el-table-column prop="description" label="描述" min-width="200">
+                <template #default="{ row }">
+                  <span class="text-gray">{{ row.description || '-' }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="created_at" label="创建时间" width="180">
+                <template #default="{ row }">
+                  {{ formatDate(row.created_at) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="工作台显示" width="120" align="center">
+                <template #default="{ row }">
+                  <el-switch
+                    v-model="row.is_visible"
+                    @change="toggleMenuVisibility(row)"
+                    :loading="row.loading"
+                  />
+                </template>
+              </el-table-column>
+            </el-table>
+            
+            <el-empty v-if="generatedCollections.length === 0 && !menuLoading" description="暂无已生成的功能">
+              <el-button type="primary" @click="switchPage('baas_data')">去创建数据模型</el-button>
+            </el-empty>
+          </el-card>
+          
+          <div class="menu-tips">
+            <el-alert
+              title="使用说明"
+              type="info"
+              :closable="false"
+            >
+              <template #default>
+                <ul class="tips-list">
+                  <li>1. 在「数据模型管理」中创建数据模型并点击「生成功能」</li>
+                  <li>2. 生成后的功能会出现在此列表中</li>
+                  <li>3. 开启「工作台显示」开关，该功能将显示在工作台侧边栏</li>
+                  <li>4. 关闭开关后，功能仍然存在，只是不在工作台显示</li>
+                </ul>
+              </template>
+            </el-alert>
+          </div>
         </div>
 
         <!-- 用户管理配置 -->
@@ -1832,7 +1918,7 @@ import {
   CreditCard, ChatDotRound, DataLine, Document, Monitor, 
   FolderOpened, Tools, Box, Grid, Warning, CopyDocument,
   Bell, DataAnalysis, Promotion, Lock, Plus, Edit, Delete, Search,
-  Download, Upload, MagicStick, Cpu, Files, View
+  Download, Upload, MagicStick, Cpu, Files, View, Menu
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
@@ -1911,6 +1997,12 @@ const appModules = ref([])
 // BaaS数据模型相关变量
 const collections = ref([])
 const collectionSearch = ref('')
+
+// 菜单管理相关变量
+const menuLoading = ref(false)
+const generatedCollections = computed(() => {
+  return collections.value.filter(c => c.is_generated)
+})
 const showCreateCollectionDialog = ref(false)
 const showEditCollectionDialog = ref(false)
 const showApiDocDialog = ref(false)
@@ -2384,6 +2476,24 @@ const goToWorkspace = (collection) => {
       detail: { collectionId: collection.id, collectionName: collection.name } 
     }))
   }, 100)
+}
+
+// 切换菜单显示状态
+const toggleMenuVisibility = async (collection) => {
+  collection.loading = true
+  try {
+    await request.put(`/baas/apps/${appId.value}/collections/${collection.id}/visibility`, {
+      is_visible: collection.is_visible
+    })
+    ElMessage.success(collection.is_visible ? '已开启工作台显示' : '已关闭工作台显示')
+  } catch (error) {
+    console.error('更新显示状态失败:', error)
+    // 回滚状态
+    collection.is_visible = !collection.is_visible
+    ElMessage.error('更新失败，请重试')
+  } finally {
+    collection.loading = false
+  }
 }
 
 // 重置表单
@@ -4013,5 +4123,49 @@ watch(() => currentPage.value, (newVal) => {
 .empty-state {
   padding: 40px 0;
   text-align: center;
+}
+
+/* 菜单管理页面样式 */
+.menu-list-card {
+  margin-bottom: 20px;
+  
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    .hint-text {
+      font-size: 12px;
+      color: #909399;
+    }
+  }
+  
+  .menu-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    .el-icon {
+      color: #409eff;
+    }
+  }
+  
+  .text-gray {
+    color: #909399;
+  }
+}
+
+.menu-tips {
+  margin-top: 20px;
+  
+  .tips-list {
+    margin: 0;
+    padding-left: 20px;
+    
+    li {
+      line-height: 2;
+      color: #606266;
+    }
+  }
 }
 </style>

@@ -29,6 +29,7 @@ type DataCollection struct {
 	UpdatePerm  string          `json:"update_perm" gorm:"size:50;default:creator"`
 	DeletePerm  string          `json:"delete_perm" gorm:"size:50;default:admin"`
 	IsGenerated bool            `json:"is_generated" gorm:"default:false"`
+	IsVisible   bool            `json:"is_visible" gorm:"default:false"`
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
 }
@@ -75,7 +76,8 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 			apps.GET("/collections/:collectionId", h.GetCollection)
 			apps.PUT("/collections/:collectionId", h.UpdateCollection)
 			apps.DELETE("/collections/:collectionId", h.DeleteCollection)
-			apps.POST("/collections/:collectionId/generate", h.GenerateFeature)
+				apps.POST("/collections/:collectionId/generate", h.GenerateFeature)
+				apps.PUT("/collections/:collectionId/visibility", h.ToggleVisibility)
 
 			// 数据文档管理
 			apps.GET("/data/:collectionName", h.ListDocuments)
@@ -334,6 +336,45 @@ func (h *Handler) GenerateFeature(c *gin.Context) {
 
 	success(c, gin.H{
 		"message": "功能生成成功",
+		"collection": collection,
+	})
+}
+
+// ToggleVisibility 切换菜单显示状态
+func (h *Handler) ToggleVisibility(c *gin.Context) {
+	appID, _ := strconv.ParseUint(c.Param("appId"), 10, 64)
+	collectionID, _ := strconv.ParseUint(c.Param("collectionId"), 10, 64)
+
+	var collection DataCollection
+	if err := h.db.Where("id = ? AND app_id = ?", collectionID, appID).First(&collection).Error; err != nil {
+		fail(c, 404, "数据模型不存在")
+		return
+	}
+
+	// 只有已生成的功能才能切换显示状态
+	if !collection.IsGenerated {
+		fail(c, 400, "请先生成功能")
+		return
+	}
+
+	var req struct {
+		IsVisible bool `json:"is_visible"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fail(c, 400, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 更新is_visible状态
+	if err := h.db.Model(&collection).Update("is_visible", req.IsVisible).Error; err != nil {
+		fail(c, 500, "更新显示状态失败: "+err.Error())
+		return
+	}
+
+	collection.IsVisible = req.IsVisible
+	success(c, gin.H{
+		"message": "更新成功",
 		"collection": collection,
 	})
 }
