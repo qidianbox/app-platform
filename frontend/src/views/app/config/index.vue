@@ -399,6 +399,14 @@
                   <el-button size="small" @click="editCollection(collection)">
                     <el-icon><Edit /></el-icon>编辑
                   </el-button>
+                  <el-button 
+                    v-if="collection.is_generated" 
+                    size="small" 
+                    type="info" 
+                    @click="goToVersions(collection)"
+                  >
+                    <el-icon><Clock /></el-icon>版本管理
+                  </el-button>
                   <el-button size="small" @click="viewApiDoc(collection)">
                     <el-icon><Document /></el-icon>API文档
                   </el-button>
@@ -1918,7 +1926,7 @@ import {
   CreditCard, ChatDotRound, DataLine, Document, Monitor, 
   FolderOpened, Tools, Box, Grid, Warning, CopyDocument,
   Bell, DataAnalysis, Promotion, Lock, Plus, Edit, Delete, Search,
-  Download, Upload, MagicStick, Cpu, Files, View, Menu
+  Download, Upload, MagicStick, Cpu, Files, View, Menu, Clock
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
@@ -1933,7 +1941,9 @@ const appId = computed(() => route.params.id ? String(route.params.id) : '')
 const initialTab = route.query.tab === 'workspace' ? 'workspace' : 'config'
 const activeTab = ref(initialTab) // 默认显示配置中心
 const mobileMenuOpen = ref(false) // 移动端菜单状态
-const currentPage = ref('overview')
+// 从 URL 参数初始化 currentPage
+const initialPage = route.query.page || 'overview'
+const currentPage = ref(initialPage)
 const workspaceMenu = ref('overview') // 工作台子菜单
 
 // 工作台菜单配置
@@ -2476,6 +2486,14 @@ const goToWorkspace = (collection) => {
       detail: { collectionId: collection.id, collectionName: collection.name } 
     }))
   }, 100)
+}
+
+// 跳转到版本管理页面
+const goToVersions = (collection) => {
+  router.push({
+    path: `/apps/${appId.value}/collections/${collection.id}/versions`,
+    query: { name: collection.display_name || collection.name }
+  })
 }
 
 // 切换菜单显示状态

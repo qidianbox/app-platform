@@ -38,6 +38,45 @@ func (DataCollection) TableName() string {
 	return "data_collections"
 }
 
+// FeatureVersion 功能版本定义
+type FeatureVersion struct {
+	ID             uint            `json:"id" gorm:"primaryKey"`
+	AppID          uint            `json:"app_id" gorm:"index"`
+	CollectionID   uint            `json:"collection_id" gorm:"index"`
+	Version        string          `json:"version" gorm:"size:20;not null"`
+	VersionNum     int             `json:"version_num" gorm:"not null"`
+	SchemaSnapshot json.RawMessage `json:"schema_snapshot" gorm:"type:json"`
+	Status         string          `json:"status" gorm:"size:20;default:draft"`
+	Changelog      string          `json:"changelog" gorm:"type:text"`
+	CreatedBy      string          `json:"created_by" gorm:"size:100"`
+	CreatedAt      time.Time       `json:"created_at"`
+	PublishedAt    *time.Time      `json:"published_at"`
+}
+
+func (FeatureVersion) TableName() string {
+	return "feature_versions"
+}
+
+// ModuleVersion 模块版本定义
+type ModuleVersion struct {
+	ID             uint            `json:"id" gorm:"primaryKey"`
+	AppID          uint            `json:"app_id" gorm:"index"`
+	ModuleCode     string          `json:"module_code" gorm:"size:50;not null"`
+	Version        string          `json:"version" gorm:"size:20;not null"`
+	VersionNum     int             `json:"version_num" gorm:"not null"`
+	ConfigSnapshot json.RawMessage `json:"config_snapshot" gorm:"type:json"`
+	Status         string          `json:"status" gorm:"size:20;default:draft"`
+	Environment    string          `json:"environment" gorm:"size:20;default:dev"`
+	Changelog      string          `json:"changelog" gorm:"type:text"`
+	CreatedBy      string          `json:"created_by" gorm:"size:100"`
+	CreatedAt      time.Time       `json:"created_at"`
+	PublishedAt    *time.Time      `json:"published_at"`
+}
+
+func (ModuleVersion) TableName() string {
+	return "module_versions"
+}
+
 // DataDocument 数据文档定义
 type DataDocument struct {
 	ID           uint            `json:"id" gorm:"primaryKey"`
@@ -78,6 +117,14 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 			apps.DELETE("/collections/:collectionId", h.DeleteCollection)
 				apps.POST("/collections/:collectionId/generate", h.GenerateFeature)
 				apps.PUT("/collections/:collectionId/visibility", h.ToggleVisibility)
+
+				// 版本管理（注意路由顺序：具体路径放在参数路径前面）
+				apps.GET("/collections/:collectionId/versions/compare", h.CompareFeatureVersions)
+				apps.GET("/collections/:collectionId/versions", h.ListFeatureVersions)
+				apps.GET("/collections/:collectionId/versions/:versionId", h.GetFeatureVersion)
+				apps.POST("/collections/:collectionId/versions", h.CreateFeatureVersion)
+				apps.PUT("/collections/:collectionId/versions/:versionId/publish", h.PublishFeatureVersion)
+				apps.PUT("/collections/:collectionId/versions/:versionId/rollback", h.RollbackFeatureVersion)
 
 			// 数据文档管理
 			apps.GET("/data/:collectionName", h.ListDocuments)
@@ -728,4 +775,297 @@ func (h *Handler) DeleteDocument(c *gin.Context) {
 // MigrateDB 数据库迁移
 func MigrateDB(db *gorm.DB) error {
 	return db.AutoMigrate(&DataCollection{}, &DataDocument{})
+}
+
+
+// ==================== 功能版本管理 API ====================
+
+// ListFeatureVersions 获取功能版本列表
+func (h *Handler) ListFeatureVersions(c *gin.Context) {
+	appID, _ := strconv.ParseUint(c.Param("appId"), 10, 64)
+	collectionID, _ := strconv.ParseUint(c.Param("collectionId"), 10, 64)
+
+	// 验证数据模型存在
+	var collection DataCollection
+	if err := h.db.Where("id = ? AND app_id = ?", collectionID, appID).First(&collection).Error; err != nil {
+		fail(c, 404, "数据模型不存在")
+		return
+	}
+
+	status := c.Query("status")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "20"))
+
+	var versions []FeatureVersion
+	var total int64
+
+	query := h.db.Model(&FeatureVersion{}).Where("collection_id = ? AND app_id = ?", collectionID, appID)
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	query.Count(&total)
+	query.Offset((page - 1) * size).Limit(size).Order("version_num DESC").Find(&versions)
+
+	success(c, gin.H{
+		"list":  versions,
+		"total": total,
+		"page":  page,
+		"size":  size,
+	})
+}
+
+// GetFeatureVersion 获取功能版本详情
+func (h *Handler) GetFeatureVersion(c *gin.Context) {
+	appID, _ := strconv.ParseUint(c.Param("appId"), 10, 64)
+	collectionID, _ := strconv.ParseUint(c.Param("collectionId"), 10, 64)
+	versionID, _ := strconv.ParseUint(c.Param("versionId"), 10, 64)
+
+	var version FeatureVersion
+	if err := h.db.Where("id = ? AND collection_id = ? AND app_id = ?", versionID, collectionID, appID).First(&version).Error; err != nil {
+		fail(c, 404, "版本不存在")
+		return
+	}
+
+	success(c, version)
+}
+
+// CreateFeatureVersion 创建功能版本
+func (h *Handler) CreateFeatureVersion(c *gin.Context) {
+	appID, _ := strconv.ParseUint(c.Param("appId"), 10, 64)
+	collectionID, _ := strconv.ParseUint(c.Param("collectionId"), 10, 64)
+
+	// 验证数据模型存在
+	var collection DataCollection
+	if err := h.db.Where("id = ? AND app_id = ?", collectionID, appID).First(&collection).Error; err != nil {
+		fail(c, 404, "数据模型不存在")
+		return
+	}
+
+	var req struct {
+		Version   string `json:"version"`
+		Changelog string `json:"changelog"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fail(c, 400, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 获取最新版本号
+	var lastVersion FeatureVersion
+	var versionNum int = 1
+	if err := h.db.Where("collection_id = ?", collectionID).Order("version_num DESC").First(&lastVersion).Error; err == nil {
+		versionNum = lastVersion.VersionNum + 1
+	}
+
+	// 自动生成版本号
+	version := req.Version
+	if version == "" {
+		version = "1.0." + strconv.Itoa(versionNum-1)
+	}
+
+	// 创建字段快照
+	schemaSnapshot := collection.Fields
+	if schemaSnapshot == nil {
+		schemaSnapshot = json.RawMessage(`[]`)
+	}
+
+	// 获取创建人
+	createdBy := ""
+	if username, exists := c.Get("username"); exists {
+		createdBy = username.(string)
+	}
+
+	newVersion := FeatureVersion{
+		AppID:          uint(appID),
+		CollectionID:   uint(collectionID),
+		Version:        version,
+		VersionNum:     versionNum,
+		SchemaSnapshot: schemaSnapshot,
+		Status:         "draft",
+		Changelog:      req.Changelog,
+		CreatedBy:      createdBy,
+	}
+
+	if err := h.db.Create(&newVersion).Error; err != nil {
+		fail(c, 500, "创建版本失败: "+err.Error())
+		return
+	}
+
+	success(c, newVersion)
+}
+
+// PublishFeatureVersion 发布功能版本
+func (h *Handler) PublishFeatureVersion(c *gin.Context) {
+	appID, _ := strconv.ParseUint(c.Param("appId"), 10, 64)
+	collectionID, _ := strconv.ParseUint(c.Param("collectionId"), 10, 64)
+	versionID, _ := strconv.ParseUint(c.Param("versionId"), 10, 64)
+
+	var version FeatureVersion
+	if err := h.db.Where("id = ? AND collection_id = ? AND app_id = ?", versionID, collectionID, appID).First(&version).Error; err != nil {
+		fail(c, 404, "版本不存在")
+		return
+	}
+
+	if version.Status == "published" {
+		fail(c, 400, "该版本已发布")
+		return
+	}
+
+	// 将其他已发布版本标记为deprecated
+	h.db.Model(&FeatureVersion{}).Where("collection_id = ? AND status = ?", collectionID, "published").Update("status", "deprecated")
+
+	// 发布当前版本
+	now := time.Now()
+	if err := h.db.Model(&version).Updates(map[string]interface{}{
+		"status":       "published",
+		"published_at": now,
+	}).Error; err != nil {
+		fail(c, 500, "发布失败: "+err.Error())
+		return
+	}
+
+	version.Status = "published"
+	version.PublishedAt = &now
+
+	success(c, gin.H{
+		"message": "发布成功",
+		"version": version,
+	})
+}
+
+// RollbackFeatureVersion 回滚到指定版本
+func (h *Handler) RollbackFeatureVersion(c *gin.Context) {
+	appID, _ := strconv.ParseUint(c.Param("appId"), 10, 64)
+	collectionID, _ := strconv.ParseUint(c.Param("collectionId"), 10, 64)
+	versionID, _ := strconv.ParseUint(c.Param("versionId"), 10, 64)
+
+	var version FeatureVersion
+	if err := h.db.Where("id = ? AND collection_id = ? AND app_id = ?", versionID, collectionID, appID).First(&version).Error; err != nil {
+		fail(c, 404, "版本不存在")
+		return
+	}
+
+	// 获取数据模型
+	var collection DataCollection
+	if err := h.db.Where("id = ?", collectionID).First(&collection).Error; err != nil {
+		fail(c, 404, "数据模型不存在")
+		return
+	}
+
+	// 将数据模型的字段恢复到该版本
+	if err := h.db.Model(&collection).Update("fields", version.SchemaSnapshot).Error; err != nil {
+		fail(c, 500, "回滚失败: "+err.Error())
+		return
+	}
+
+	// 创建一个新版本记录（回滚记录）
+	var lastVersion FeatureVersion
+	var versionNum int = 1
+	if err := h.db.Where("collection_id = ?", collectionID).Order("version_num DESC").First(&lastVersion).Error; err == nil {
+		versionNum = lastVersion.VersionNum + 1
+	}
+
+	createdBy := ""
+	if username, exists := c.Get("username"); exists {
+		createdBy = username.(string)
+	}
+
+	rollbackVersion := FeatureVersion{
+		AppID:          uint(appID),
+		CollectionID:   uint(collectionID),
+		Version:        "1.0." + strconv.Itoa(versionNum-1),
+		VersionNum:     versionNum,
+		SchemaSnapshot: version.SchemaSnapshot,
+		Status:         "published",
+		Changelog:      "回滚到版本 " + version.Version,
+		CreatedBy:      createdBy,
+	}
+	now := time.Now()
+	rollbackVersion.PublishedAt = &now
+
+	// 将其他已发布版本标记为deprecated
+	h.db.Model(&FeatureVersion{}).Where("collection_id = ? AND status = ?", collectionID, "published").Update("status", "deprecated")
+
+	if err := h.db.Create(&rollbackVersion).Error; err != nil {
+		fail(c, 500, "创建回滚记录失败: "+err.Error())
+		return
+	}
+
+	success(c, gin.H{
+		"message":        "回滚成功",
+		"rollbackVersion": rollbackVersion,
+	})
+}
+
+// CompareFeatureVersions 对比两个版本
+func (h *Handler) CompareFeatureVersions(c *gin.Context) {
+	appID, _ := strconv.ParseUint(c.Param("appId"), 10, 64)
+	collectionID, _ := strconv.ParseUint(c.Param("collectionId"), 10, 64)
+	v1ID, _ := strconv.ParseUint(c.Query("v1"), 10, 64)
+	v2ID, _ := strconv.ParseUint(c.Query("v2"), 10, 64)
+
+	if v1ID == 0 || v2ID == 0 {
+		fail(c, 400, "请指定两个版本ID (v1, v2)")
+		return
+	}
+
+	var version1, version2 FeatureVersion
+	if err := h.db.Where("id = ? AND collection_id = ? AND app_id = ?", v1ID, collectionID, appID).First(&version1).Error; err != nil {
+		fail(c, 404, "版本1不存在")
+		return
+	}
+	if err := h.db.Where("id = ? AND collection_id = ? AND app_id = ?", v2ID, collectionID, appID).First(&version2).Error; err != nil {
+		fail(c, 404, "版本2不存在")
+		return
+	}
+
+	// 解析两个版本的字段
+	var fields1, fields2 []FieldDefinition
+	json.Unmarshal(version1.SchemaSnapshot, &fields1)
+	json.Unmarshal(version2.SchemaSnapshot, &fields2)
+
+	// 构建字段映射
+	fieldMap1 := make(map[string]FieldDefinition)
+	fieldMap2 := make(map[string]FieldDefinition)
+	for _, f := range fields1 {
+		fieldMap1[f.Name] = f
+	}
+	for _, f := range fields2 {
+		fieldMap2[f.Name] = f
+	}
+
+	// 计算差异
+	var added, removed, modified []FieldDefinition
+	for name, f := range fieldMap2 {
+		if _, exists := fieldMap1[name]; !exists {
+			added = append(added, f)
+		} else if fieldMap1[name] != f {
+			modified = append(modified, f)
+		}
+	}
+	for name, f := range fieldMap1 {
+		if _, exists := fieldMap2[name]; !exists {
+			removed = append(removed, f)
+		}
+	}
+
+	success(c, gin.H{
+		"version1": gin.H{
+			"id":      version1.ID,
+			"version": version1.Version,
+			"fields":  fields1,
+		},
+		"version2": gin.H{
+			"id":      version2.ID,
+			"version": version2.Version,
+			"fields":  fields2,
+		},
+		"diff": gin.H{
+			"added":    added,
+			"removed":  removed,
+			"modified": modified,
+		},
+	})
 }

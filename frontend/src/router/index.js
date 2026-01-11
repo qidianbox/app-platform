@@ -39,6 +39,13 @@ const routes = [
     path: '/apps/:id/config',
     name: 'AppConfig',
     component: () => import('@/views/app/config/index.vue')
+  },
+  // 功能版本管理页面
+  {
+    path: '/apps/:appId/collections/:collectionId/versions',
+    name: 'FeatureVersions',
+    component: () => import('@/views/app/config/FeatureVersions.vue'),
+    meta: { title: '版本管理' }
   }
 ]
 
