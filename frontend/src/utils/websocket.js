@@ -21,9 +21,24 @@ class WebSocketClient {
    * @param {string} userId - 用户ID
    */
   connect(appId, userId) {
+    // 检查appId是否有效
+    if (!appId || appId === '') {
+      console.warn('[WebSocket] appId is empty, skipping connection')
+      return
+    }
+    
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.host
+    // 使用后端API端口（与request.js保持一致）
+    let host = window.location.host
+    // 如果是开发环境，前端在不同端口，需要连接后端的WebSocket
+    if (window.location.port === '5173') {
+      host = window.location.hostname + ':8080'
+    } else if (window.location.host.includes('5173-')) {
+      // Manus平台的公网地址格式
+      host = window.location.host.replace('5173-', '8080-')
+    }
     this.url = `${protocol}//${host}/api/v1/ws?app_id=${appId}&user_id=${userId || ''}`
+    console.log('[WebSocket] Connecting to:', this.url)
 
     this.createConnection()
   }

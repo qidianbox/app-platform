@@ -247,6 +247,27 @@ request.interceptors.request.use(config => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  
+  // 检查并拒绝空的app_id参数，避免发送无效请求
+  // 使用静默拒绝，不显示错误提示，因为这通常是组件初始化时的时序问题
+  if (config.params && config.params.app_id !== undefined) {
+    if (!config.params.app_id || config.params.app_id === '') {
+      systemLogger.warn('API', `Request blocked: empty app_id in params for ${config.url}`)
+      // 返回一个已取消的请求，不触发错误提示
+      const cancelError = new Error('Request cancelled: empty app_id')
+      cancelError._silent = true  // 标记为静默错误
+      return Promise.reject(cancelError)
+    }
+  }
+  if (config.data && config.data.app_id !== undefined) {
+    if (!config.data.app_id || config.data.app_id === '') {
+      systemLogger.warn('API', `Request blocked: empty app_id in data for ${config.url}`)
+      const cancelError = new Error('Request cancelled: empty app_id')
+      cancelError._silent = true
+      return Promise.reject(cancelError)
+    }
+  }
+  
   config._requestLog = systemLogger.logRequest(config)
   config._startTime = Date.now()
   return config
@@ -298,6 +319,11 @@ request.interceptors.response.use(
     return data
   },
   async error => {
+    // 检查是否是静默错误（如空app_id导致的取消）
+    if (error._silent) {
+      return Promise.reject(error)
+    }
+    
     const config = error.config
     
     // 检查是否可以重试
