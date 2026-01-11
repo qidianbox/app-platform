@@ -22,25 +22,20 @@ var db *gorm.DB
 func InitDB(cfg *config.DatabaseConfig) error {
 	var dsn string
 	
-	// 检查是否有DATABASE_URL环境变量（Manus平台数据库）
+	// 强制使用DATABASE_URL环境变量（Manus平台TiDB数据库）
 	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL != "" {
-		log.Println("[Database] Using DATABASE_URL from environment")
-		// 解析DATABASE_URL格式: mysql://user:pass@host:port/dbname?tls=...
-		var err error
-		dsn, err = parseDatabaseURL(databaseURL)
-		if err != nil {
-			return fmt.Errorf("failed to parse DATABASE_URL: %v", err)
-		}
-		log.Printf("[Database] DSN: %s", maskPassword(dsn))
-	} else {
-		log.Println("[Database] Using config file database settings")
-		// 使用配置文件中的数据库配置
-		dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-			cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DBName)
+	if databaseURL == "" {
+		return fmt.Errorf("DATABASE_URL environment variable is required")
 	}
-
+	
+	log.Println("[Database] Using DATABASE_URL from environment (Manus TiDB)")
+	// 解析DATABASE_URL格式: mysql://user:pass@host:port/dbname?tls=...
 	var err error
+	dsn, err = parseDatabaseURL(databaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse DATABASE_URL: %v", err)
+	}
+	log.Printf("[Database] DSN: %s", maskPassword(dsn))
 	
 	// 配置重试机制
 	maxRetries := 3

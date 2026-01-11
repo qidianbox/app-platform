@@ -698,3 +698,17 @@
   - 根因：monitor_alerts表未在Manus平台的TiDB数据库中创建
   - 手动执行CREATE TABLE语句创建了monitor_alerts表
   - API现在可以正常返回数据
+
+
+## 2026-01-11 统一数据库配置
+
+### 需求
+- [x] 只使用一个数据库（Manus平台TiDB）
+- [x] 移除本地MySQL配置
+
+### 已完成修改
+- [x] 修改后端数据库连接代码，强制使用DATABASE_URL
+  - 移除了本地MySQL配置的回退逻辑
+  - 现在必须通过DATABASE_URL环境变量连接数据库
+- [x] 确保所有必需的表都已在TiDB中创建
+  - 数据库中已有21个表，包含所有必需的模块表
