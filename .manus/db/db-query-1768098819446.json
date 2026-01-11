@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `monitor_alerts` (\n  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  `app_id` INT UNSIGNED NOT NULL COMMENT 'APP ID',\n  `alert_name` VARCHAR(255) NOT NULL COMMENT '告警名称',\n  `metric_name` VARCHAR(100) NOT NULL COMMENT '监控指标',\n  `condition` VARCHAR(50) NOT NULL COMMENT '条件: gt, lt, eq, gte, lte',\n  `threshold` DECIMAL(20,4) NOT NULL COMMENT '阈值',\n  `status` VARCHAR(50) NOT NULL DEFAULT 'normal' COMMENT '状态: normal-正常, alerting-告警中',\n  `last_alert_at` DATETIME DEFAULT NULL COMMENT '最后告警时间',\n  `is_active` TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用',\n  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  `deleted_at` DATETIME DEFAULT NULL\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3HmF555sZ6wXsVo.885fbf394348 --database cSZcQBnZuHpLU79S85jppV --execute CREATE TABLE IF NOT EXISTS `monitor_alerts` (\n  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,\n  `app_id` INT UNSIGNED NOT NULL COMMENT 'APP ID',\n  `alert_name` VARCHAR(255) NOT NULL COMMENT '告警名称',\n  `metric_name` VARCHAR(100) NOT NULL COMMENT '监控指标',\n  `condition` VARCHAR(50) NOT NULL COMMENT '条件: gt, lt, eq, gte, lte',\n  `threshold` DECIMAL(20,4) NOT NULL COMMENT '阈值',\n  `status` VARCHAR(50) NOT NULL DEFAULT 'normal' COMMENT '状态: normal-正常, alerting-告警中',\n  `last_alert_at` DATETIME DEFAULT NULL COMMENT '最后告警时间',\n  `is_active` TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用',\n  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  `deleted_at` DATETIME DEFAULT NULL\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 200
+}
