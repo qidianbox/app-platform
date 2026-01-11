@@ -245,3 +245,18 @@ type Version struct {
 	UpdatedAt     time.Time      `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
 }
+
+// ModuleVersion 模块版本模型
+type ModuleVersion struct {
+	ID             uint       `gorm:"primarykey" json:"id"`
+	AppID          uint       `gorm:"index" json:"app_id"`
+	ModuleCode     string     `gorm:"size:100;index" json:"module_code"`
+	Version        string     `gorm:"size:50" json:"version"`
+	ConfigSnapshot string     `gorm:"type:text" json:"config_snapshot"`
+	Status         string     `gorm:"size:20;default:draft" json:"status"`
+	Environment    string     `gorm:"size:20;default:dev" json:"environment"`
+	Changelog      string     `gorm:"type:text" json:"changelog"`
+	CreatedBy      string     `gorm:"size:100" json:"created_by"`
+	PublishedAt    *time.Time `json:"published_at"`
+	CreatedAt      time.Time  `json:"created_at"`
+}

@@ -774,7 +774,7 @@ func (h *Handler) DeleteDocument(c *gin.Context) {
 
 // MigrateDB 数据库迁移
 func MigrateDB(db *gorm.DB) error {
-	return db.AutoMigrate(&DataCollection{}, &DataDocument{})
+	return db.AutoMigrate(&DataCollection{}, &DataDocument{}, &FeatureVersion{})
 }
 
 

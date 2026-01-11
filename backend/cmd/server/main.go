@@ -144,10 +144,17 @@ func main() {
 				appGroup.GET("/:id/modules/:module_code/config", moduleapi.GetModuleConfig)
 				appGroup.DELETE("/:id/modules/:module_code/config", moduleapi.ResetModuleConfig)
 				appGroup.POST("/:id/modules/:module_code/config/test", moduleapi.TestModuleConfig)
-				// 配置历史
-				appGroup.GET("/:id/modules/:module_code/config/history", moduleapi.GetConfigHistory)
-				appGroup.POST("/:id/modules/:module_code/config/rollback/:history_id", moduleapi.RollbackConfig)
-				appGroup.GET("/:id/modules/:module_code/config/compare", moduleapi.CompareConfig)
+// 配置历史
+					appGroup.GET("/:id/modules/:module_code/config/history", moduleapi.GetConfigHistory)
+					appGroup.POST("/:id/modules/:module_code/config/rollback/:history_id", moduleapi.RollbackConfig)
+					appGroup.GET("/:id/modules/:module_code/config/compare", moduleapi.CompareConfig)
+
+					// 模块版本管理
+					appGroup.GET("/:id/modules/:module_code/versions", moduleapi.ListModuleVersions)
+					appGroup.POST("/:id/modules/:module_code/versions", moduleapi.CreateModuleVersion)
+					appGroup.POST("/:id/modules/:module_code/versions/:version_id/publish", moduleapi.PublishModuleVersion)
+					appGroup.POST("/:id/modules/:module_code/versions/:version_id/rollback", moduleapi.RollbackModuleVersion)
+					appGroup.GET("/:id/modules/:module_code/versions/compare", moduleapi.CompareModuleVersions)
 
 				// 模块依赖管理
 				appGroup.GET("/:id/modules/:module_code/dependencies/check", moduleapi.CheckModuleDependencies)

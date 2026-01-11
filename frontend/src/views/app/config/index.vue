@@ -1030,6 +1030,9 @@
               <el-button @click="testConfig('user_management')">测试配置</el-button>
               <el-button @click="resetConfig('user_management')">重置</el-button>
               <el-button @click="showConfigHistory('user_management')">查看历史</el-button>
+              <el-button @click="goToModuleVersions('user_management', '用户管理')">
+                <el-icon><Clock /></el-icon>版本管理
+              </el-button>
             </el-form-item>
           </el-form>
         </div>
@@ -1070,6 +1073,9 @@
             <el-form-item>
               <el-button type="primary" @click="saveModuleConfig('message_center')">保存配置</el-button>
               <el-button @click="resetConfig('message_center')">重置</el-button>
+              <el-button @click="goToModuleVersions('message_center', '消息中心')">
+                <el-icon><Clock /></el-icon>版本管理
+              </el-button>
             </el-form-item>
           </el-form>
         </div>
@@ -1122,6 +1128,9 @@
               <el-button type="primary" @click="saveModuleConfig('push_service')">保存配置</el-button>
               <el-button @click="testConfig('push_service')">测试推送</el-button>
               <el-button @click="resetConfig('push_service')">重置</el-button>
+              <el-button @click="goToModuleVersions('push_service', '推送服务')">
+                <el-icon><Clock /></el-icon>版本管理
+              </el-button>
             </el-form-item>
           </el-form>
         </div>
@@ -2493,6 +2502,14 @@ const goToVersions = (collection) => {
   router.push({
     path: `/apps/${appId.value}/collections/${collection.id}/versions`,
     query: { name: collection.display_name || collection.name }
+  })
+}
+
+// 跳转到模块版本管理页面
+const goToModuleVersions = (moduleCode, moduleName) => {
+  router.push({
+    path: `/apps/${appId.value}/modules/${moduleCode}/versions`,
+    query: { name: moduleName }
   })
 }
 
