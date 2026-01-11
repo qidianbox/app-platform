@@ -388,6 +388,409 @@
           </div>
         </div>
 
+        <!-- API生成器页面 -->
+        <div v-else-if="currentPage === 'api_generator'" class="page-content">
+          <div class="page-header">
+            <div>
+              <h2 class="page-title">API生成器</h2>
+              <p class="page-desc">基于数据模型自动生成RESTful API</p>
+            </div>
+          </div>
+          
+          <!-- 步骤导航 -->
+          <div class="generator-steps">
+            <el-steps :active="apiGeneratorStep" finish-status="success" align-center>
+              <el-step title="选择数据模型" />
+              <el-step title="配置API选项" />
+              <el-step title="预览与生成" />
+            </el-steps>
+          </div>
+          
+          <!-- 步骤1: 选择数据模型 -->
+          <div v-if="apiGeneratorStep === 0" class="generator-content">
+            <h3>选择要生成API的数据模型</h3>
+            <div class="model-select-grid">
+              <div 
+                v-for="collection in collections" 
+                :key="collection.id" 
+                class="model-select-card"
+                :class="{ selected: selectedApiModels.includes(collection.id) }"
+                @click="toggleApiModel(collection.id)"
+              >
+                <el-checkbox :model-value="selectedApiModels.includes(collection.id)" />
+                <div class="model-info">
+                  <h4>{{ collection.display_name || collection.name }}</h4>
+                  <span class="model-name">{{ collection.name }}</span>
+                  <p>{{ collection.description || '暂无描述' }}</p>
+                  <div class="model-stats">
+                    <span>字段数: {{ (collection.fields || []).length }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-if="collections.length === 0" class="empty-state">
+              <el-empty description="暂无数据模型，请先在BaaS数据服务中创建">
+                <el-button type="primary" @click="switchPage('baas_data')">+创建数据模型</el-button>
+              </el-empty>
+            </div>
+            <div class="step-actions">
+              <el-button type="primary" :disabled="selectedApiModels.length === 0" @click="apiGeneratorStep = 1">
+                下一步
+              </el-button>
+            </div>
+          </div>
+          
+          <!-- 步骤2: 配置API选项 -->
+          <div v-else-if="apiGeneratorStep === 1" class="generator-content">
+            <h3>配置API生成选项</h3>
+            <el-form :model="apiGeneratorConfig" label-width="160px" class="config-form">
+              <div class="form-section">
+                <h4>接口配置</h4>
+                <el-form-item label="API前缀">
+                  <el-input v-model="apiGeneratorConfig.prefix" placeholder="/api/v1" />
+                  <span class="form-hint">所有生成的API都会以此前缀开头</span>
+                </el-form-item>
+                <el-form-item label="生成接口">
+                  <el-checkbox-group v-model="apiGeneratorConfig.endpoints">
+                    <el-checkbox label="list">列表查询 (GET /list)</el-checkbox>
+                    <el-checkbox label="detail">详情查询 (GET /:id)</el-checkbox>
+                    <el-checkbox label="create">创建 (POST /)</el-checkbox>
+                    <el-checkbox label="update">更新 (PUT /:id)</el-checkbox>
+                    <el-checkbox label="delete">删除 (DELETE /:id)</el-checkbox>
+                    <el-checkbox label="batch_delete">批量删除 (POST /batch-delete)</el-checkbox>
+                  </el-checkbox-group>
+                </el-form-item>
+              </div>
+              <div class="form-section">
+                <h4>高级选项</h4>
+                <el-form-item label="启用分页">
+                  <el-switch v-model="apiGeneratorConfig.pagination" />
+                </el-form-item>
+                <el-form-item label="启用排序">
+                  <el-switch v-model="apiGeneratorConfig.sorting" />
+                </el-form-item>
+                <el-form-item label="启用筛选">
+                  <el-switch v-model="apiGeneratorConfig.filtering" />
+                </el-form-item>
+                <el-form-item label="启用认证">
+                  <el-switch v-model="apiGeneratorConfig.authentication" />
+                  <span class="form-hint">启用后需要携带Token访问</span>
+                </el-form-item>
+              </div>
+            </el-form>
+            <div class="step-actions">
+              <el-button @click="apiGeneratorStep = 0">上一步</el-button>
+              <el-button type="primary" @click="generateApiPreview">下一步</el-button>
+            </div>
+          </div>
+          
+          <!-- 步骤3: 预览与生成 -->
+          <div v-else-if="apiGeneratorStep === 2" class="generator-content">
+            <h3>API预览</h3>
+            <div class="preview-section">
+              <div class="preview-header">
+                <span>生成的API列表</span>
+                <el-button size="small" @click="copyAllApiCode">
+                  <el-icon><CopyDocument /></el-icon>复制代码
+                </el-button>
+              </div>
+              <div class="api-preview-list">
+                <div v-for="api in generatedApis" :key="api.path" class="api-preview-item">
+                  <el-tag :type="getMethodTagType(api.method)" size="small">{{ api.method }}</el-tag>
+                  <code>{{ api.path }}</code>
+                  <span class="api-desc">{{ api.description }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="preview-section">
+              <div class="preview-header">
+                <span>后端代码预览 (Go)</span>
+                <el-button size="small" @click="copyApiCode('go')">
+                  <el-icon><CopyDocument /></el-icon>复制
+                </el-button>
+              </div>
+              <pre class="code-preview"><code>{{ generatedGoCode }}</code></pre>
+            </div>
+            <div class="step-actions">
+              <el-button @click="apiGeneratorStep = 1">上一步</el-button>
+              <el-button type="primary" @click="downloadApiCode">
+                <el-icon><Download /></el-icon>下载代码
+              </el-button>
+              <el-button type="success" @click="deployApi">
+                <el-icon><Upload /></el-icon>部署API
+              </el-button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 页面生成器页面 -->
+        <div v-else-if="currentPage === 'page_generator'" class="page-content">
+          <div class="page-header">
+            <div>
+              <h2 class="page-title">页面生成器</h2>
+              <p class="page-desc">基于数据模型自动生成前端页面</p>
+            </div>
+          </div>
+          
+          <!-- 步骤导航 -->
+          <div class="generator-steps">
+            <el-steps :active="pageGeneratorStep" finish-status="success" align-center>
+              <el-step title="选择数据模型" />
+              <el-step title="配置页面选项" />
+              <el-step title="预览与生成" />
+            </el-steps>
+          </div>
+          
+          <!-- 步骤1: 选择数据模型 -->
+          <div v-if="pageGeneratorStep === 0" class="generator-content">
+            <h3>选择要生成页面的数据模型</h3>
+            <div class="model-select-grid">
+              <div 
+                v-for="collection in collections" 
+                :key="collection.id" 
+                class="model-select-card"
+                :class="{ selected: selectedPageModel === collection.id }"
+                @click="selectedPageModel = collection.id"
+              >
+                <el-radio :model-value="selectedPageModel === collection.id" />
+                <div class="model-info">
+                  <h4>{{ collection.display_name || collection.name }}</h4>
+                  <span class="model-name">{{ collection.name }}</span>
+                  <p>{{ collection.description || '暂无描述' }}</p>
+                </div>
+              </div>
+            </div>
+            <div v-if="collections.length === 0" class="empty-state">
+              <el-empty description="暂无数据模型，请先在BaaS数据服务中创建">
+                <el-button type="primary" @click="switchPage('baas_data')">+创建数据模型</el-button>
+              </el-empty>
+            </div>
+            <div class="step-actions">
+              <el-button type="primary" :disabled="!selectedPageModel" @click="pageGeneratorStep = 1">
+                下一步
+              </el-button>
+            </div>
+          </div>
+          
+          <!-- 步骤2: 配置页面选项 -->
+          <div v-else-if="pageGeneratorStep === 1" class="generator-content">
+            <h3>配置页面生成选项</h3>
+            <el-form :model="pageGeneratorConfig" label-width="160px" class="config-form">
+              <div class="form-section">
+                <h4>页面类型</h4>
+                <el-form-item label="生成页面">
+                  <el-checkbox-group v-model="pageGeneratorConfig.pages">
+                    <el-checkbox label="list">列表页</el-checkbox>
+                    <el-checkbox label="form">表单页（新增/编辑）</el-checkbox>
+                    <el-checkbox label="detail">详情页</el-checkbox>
+                  </el-checkbox-group>
+                </el-form-item>
+              </div>
+              <div class="form-section">
+                <h4>列表页配置</h4>
+                <el-form-item label="显示字段">
+                  <el-checkbox-group v-model="pageGeneratorConfig.listFields">
+                    <el-checkbox 
+                      v-for="field in selectedModelFields" 
+                      :key="field.name" 
+                      :label="field.name"
+                    >
+                      {{ field.display_name || field.name }}
+                    </el-checkbox>
+                  </el-checkbox-group>
+                </el-form-item>
+                <el-form-item label="启用搜索">
+                  <el-switch v-model="pageGeneratorConfig.enableSearch" />
+                </el-form-item>
+                <el-form-item label="启用分页">
+                  <el-switch v-model="pageGeneratorConfig.enablePagination" />
+                </el-form-item>
+              </div>
+              <div class="form-section">
+                <h4>样式配置</h4>
+                <el-form-item label="UI框架">
+                  <el-select v-model="pageGeneratorConfig.uiFramework">
+                    <el-option label="Element Plus" value="element-plus" />
+                    <el-option label="Ant Design Vue" value="ant-design" />
+                    <el-option label="Naive UI" value="naive-ui" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="布局样式">
+                  <el-select v-model="pageGeneratorConfig.layout">
+                    <el-option label="卡片布局" value="card" />
+                    <el-option label="表格布局" value="table" />
+                  </el-select>
+                </el-form-item>
+              </div>
+            </el-form>
+            <div class="step-actions">
+              <el-button @click="pageGeneratorStep = 0">上一步</el-button>
+              <el-button type="primary" @click="generatePagePreview">下一步</el-button>
+            </div>
+          </div>
+          
+          <!-- 步骤3: 预览与生成 -->
+          <div v-else-if="pageGeneratorStep === 2" class="generator-content">
+            <h3>页面预览</h3>
+            <div class="preview-tabs">
+              <el-tabs v-model="pagePreviewTab">
+                <el-tab-pane label="列表页" name="list" v-if="pageGeneratorConfig.pages.includes('list')">
+                  <div class="page-preview-frame">
+                    <div class="preview-toolbar">
+                      <el-input placeholder="搜索..." style="width: 200px;" v-if="pageGeneratorConfig.enableSearch" />
+                      <el-button type="primary">新增</el-button>
+                    </div>
+                    <el-table :data="previewTableData" style="width: 100%">
+                      <el-table-column 
+                        v-for="field in pageGeneratorConfig.listFields" 
+                        :key="field" 
+                        :prop="field" 
+                        :label="getFieldLabel(field)"
+                      />
+                      <el-table-column label="操作" width="180">
+                        <template #default>
+                          <el-button size="small">编辑</el-button>
+                          <el-button size="small" type="danger">删除</el-button>
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </div>
+                </el-tab-pane>
+                <el-tab-pane label="表单页" name="form" v-if="pageGeneratorConfig.pages.includes('form')">
+                  <div class="page-preview-frame">
+                    <el-form label-width="120px">
+                      <el-form-item 
+                        v-for="field in selectedModelFields" 
+                        :key="field.name" 
+                        :label="field.display_name || field.name"
+                      >
+                        <el-input v-if="field.type === 'string'" :placeholder="`请输入${field.display_name || field.name}`" />
+                        <el-input-number v-else-if="field.type === 'number'" />
+                        <el-switch v-else-if="field.type === 'boolean'" />
+                        <el-input v-else type="textarea" />
+                      </el-form-item>
+                      <el-form-item>
+                        <el-button type="primary">保存</el-button>
+                        <el-button>取消</el-button>
+                      </el-form-item>
+                    </el-form>
+                  </div>
+                </el-tab-pane>
+              </el-tabs>
+            </div>
+            <div class="preview-section">
+              <div class="preview-header">
+                <span>Vue代码预览</span>
+                <el-button size="small" @click="copyPageCode">
+                  <el-icon><CopyDocument /></el-icon>复制
+                </el-button>
+              </div>
+              <pre class="code-preview"><code>{{ generatedVueCode }}</code></pre>
+            </div>
+            <div class="step-actions">
+              <el-button @click="pageGeneratorStep = 1">上一步</el-button>
+              <el-button type="primary" @click="downloadPageCode">
+                <el-icon><Download /></el-icon>下载代码
+              </el-button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 代码生成器页面 -->
+        <div v-else-if="currentPage === 'code_generator'" class="page-content">
+          <div class="page-header">
+            <div>
+              <h2 class="page-title">代码生成器</h2>
+              <p class="page-desc">一键生成完整的前后端代码</p>
+            </div>
+          </div>
+          
+          <div class="generator-content">
+            <div class="code-gen-options">
+              <h3>选择要生成的内容</h3>
+              
+              <div class="option-section">
+                <h4>数据模型</h4>
+                <div class="model-checkbox-list">
+                  <el-checkbox 
+                    v-for="collection in collections" 
+                    :key="collection.id"
+                    :label="collection.id"
+                    v-model="codeGeneratorConfig.selectedModels"
+                  >
+                    {{ collection.display_name || collection.name }}
+                  </el-checkbox>
+                </div>
+                <el-checkbox v-model="codeGeneratorConfig.selectAll" @change="toggleSelectAllModels">
+                  全选
+                </el-checkbox>
+              </div>
+              
+              <div class="option-section">
+                <h4>生成内容</h4>
+                <el-checkbox-group v-model="codeGeneratorConfig.generateItems">
+                  <el-checkbox label="backend_api">后端API代码 (Go)</el-checkbox>
+                  <el-checkbox label="frontend_pages">前端页面 (Vue)</el-checkbox>
+                  <el-checkbox label="api_docs">API文档 (Swagger)</el-checkbox>
+                  <el-checkbox label="database_sql">数据库脚本 (SQL)</el-checkbox>
+                </el-checkbox-group>
+              </div>
+              
+              <div class="option-section">
+                <h4>后端配置</h4>
+                <el-form label-width="140px">
+                  <el-form-item label="后端框架">
+                    <el-select v-model="codeGeneratorConfig.backendFramework">
+                      <el-option label="Gin (Go)" value="gin" />
+                      <el-option label="Echo (Go)" value="echo" />
+                      <el-option label="Fiber (Go)" value="fiber" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="数据库">
+                    <el-select v-model="codeGeneratorConfig.database">
+                      <el-option label="MySQL" value="mysql" />
+                      <el-option label="PostgreSQL" value="postgres" />
+                      <el-option label="SQLite" value="sqlite" />
+                    </el-select>
+                  </el-form-item>
+                </el-form>
+              </div>
+              
+              <div class="option-section">
+                <h4>前端配置</h4>
+                <el-form label-width="140px">
+                  <el-form-item label="前端框架">
+                    <el-select v-model="codeGeneratorConfig.frontendFramework">
+                      <el-option label="Vue 3" value="vue3" />
+                      <el-option label="React" value="react" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="UI组件库">
+                    <el-select v-model="codeGeneratorConfig.uiLibrary">
+                      <el-option label="Element Plus" value="element-plus" />
+                      <el-option label="Ant Design" value="antd" />
+                      <el-option label="Naive UI" value="naive-ui" />
+                    </el-select>
+                  </el-form-item>
+                </el-form>
+              </div>
+            </div>
+            
+            <div class="code-gen-actions">
+              <el-button 
+                type="primary" 
+                size="large"
+                :disabled="codeGeneratorConfig.selectedModels.length === 0 || codeGeneratorConfig.generateItems.length === 0"
+                @click="generateFullCode"
+              >
+                <el-icon><Download /></el-icon>
+                生成并下载代码
+              </el-button>
+              <p class="hint">将生成ZIP压缩包，包含所有选中的代码文件</p>
+            </div>
+          </div>
+        </div>
+
         <!-- 基础配置页面 -->
         <div v-else-if="currentPage === 'basic'" class="page-content">
           <h2 class="page-title">基础配置</h2>
@@ -1412,7 +1815,8 @@ import {
   ArrowLeft, ArrowRight, House, Setting, User, UserFilled, 
   CreditCard, ChatDotRound, DataLine, Document, Monitor, 
   FolderOpened, Tools, Box, Grid, Warning, CopyDocument,
-  Bell, DataAnalysis, Promotion, Lock, Plus, Edit, Delete, Search
+  Bell, DataAnalysis, Promotion, Lock, Plus, Edit, Delete, Search,
+  Download, Upload, MagicStick, Cpu, Files
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
@@ -1442,11 +1846,12 @@ const workspaceMenuItems = [
   { key: 'versions', label: '版本管理', icon: Promotion },
   { key: 'audit', label: '审计日志', icon: Lock }
 ]
-const expandedGroups = ref(['baas', 'user', 'message', 'data', 'system', 'storage'])
+const expandedGroups = ref(['generator', 'baas', 'user', 'message', 'data', 'system', 'storage'])
 const adminName = ref(localStorage.getItem('adminName') || 'Admin')
 
 // 模块分组定义
 const moduleGroups = [
+  { key: 'generator', name: '功能生成器', icon: 'MagicStick', modules: ['api_generator', 'page_generator', 'code_generator'] },
   { key: 'baas', name: 'BaaS数据服务', icon: 'Grid', modules: ['baas_data'] },
   { key: 'user', name: '用户与权限', icon: 'UserFilled', modules: ['user_management'] },
   { key: 'payment', name: '交易与支付', icon: 'CreditCard', modules: ['payment'] },
@@ -1458,6 +1863,9 @@ const moduleGroups = [
 
 // 模块名称映射
 const moduleNameMap = {
+  api_generator: 'API生成器',
+  page_generator: '页面生成器',
+  code_generator: '代码生成器',
   baas_data: '数据模型管理',
   user_management: '用户管理',
   message_center: '消息中心',
@@ -1513,6 +1921,57 @@ const filteredCollections = computed(() => {
     (c.display_name && c.display_name.toLowerCase().includes(search)) ||
     (c.description && c.description.toLowerCase().includes(search))
   )
+})
+
+// ==================== 功能生成器相关变量 ====================
+// API生成器
+const apiGeneratorStep = ref(0)
+const selectedApiModels = ref([])
+const apiGeneratorConfig = ref({
+  prefix: '/api/v1',
+  endpoints: ['list', 'detail', 'create', 'update', 'delete'],
+  pagination: true,
+  sorting: true,
+  filtering: true,
+  authentication: true
+})
+const generatedApis = ref([])
+const generatedGoCode = ref('')
+
+// 页面生成器
+const pageGeneratorStep = ref(0)
+const selectedPageModel = ref(null)
+const pageGeneratorConfig = ref({
+  pages: ['list', 'form'],
+  listFields: [],
+  enableSearch: true,
+  enablePagination: true,
+  uiFramework: 'element-plus',
+  layout: 'table'
+})
+const pagePreviewTab = ref('list')
+const previewTableData = ref([
+  { id: 1, name: '示例数据1' },
+  { id: 2, name: '示例数据2' }
+])
+const generatedVueCode = ref('')
+
+// 代码生成器
+const codeGeneratorConfig = ref({
+  selectedModels: [],
+  selectAll: false,
+  generateItems: ['backend_api', 'frontend_pages'],
+  backendFramework: 'gin',
+  database: 'mysql',
+  frontendFramework: 'vue3',
+  uiLibrary: 'element-plus'
+})
+
+// 计算属性：选中模型的字段
+const selectedModelFields = computed(() => {
+  if (!selectedPageModel.value) return []
+  const model = collections.value.find(c => c.id === selectedPageModel.value)
+  return model?.fields || []
 })
 
 const stats = ref({
@@ -1711,8 +2170,8 @@ const toggleGroup = (groupKey) => {
 const hasModulesInGroup = (groupKey) => {
   const group = moduleGroups.find(g => g.key === groupKey)
   if (!group) return false
-  // BaaS分组始终显示
-  if (groupKey === 'baas') return true
+  // 功能生成器和BaaS分组始终显示
+  if (groupKey === 'generator' || groupKey === 'baas') return true
   // 使用module_code匹配（后端返回的字段）
   return appModules.value.some(m => group.modules.includes(m.module_code))
 }
@@ -1721,6 +2180,15 @@ const hasModulesInGroup = (groupKey) => {
 const getModulesInGroup = (groupKey) => {
   const group = moduleGroups.find(g => g.key === groupKey)
   if (!group) return []
+  
+  // 功能生成器分组返回固定模块
+  if (groupKey === 'generator') {
+    return [
+      { source_module: 'api_generator', name: 'API生成器' },
+      { source_module: 'page_generator', name: '页面生成器' },
+      { source_module: 'code_generator', name: '代码生成器' }
+    ]
+  }
   
   // BaaS分组返回固定模块
   if (groupKey === 'baas') {
@@ -1897,6 +2365,375 @@ const removeField = (index) => {
 }
 
 // ==================== 结束BaaS相关函数 ====================
+
+// ==================== 功能生成器相关函数 ====================
+
+// 切换选中的API模型
+const toggleApiModel = (modelId) => {
+  const index = selectedApiModels.value.indexOf(modelId)
+  if (index === -1) {
+    selectedApiModels.value.push(modelId)
+  } else {
+    selectedApiModels.value.splice(index, 1)
+  }
+}
+
+// 生成API预览
+const generateApiPreview = () => {
+  const apis = []
+  const selectedModels = collections.value.filter(c => selectedApiModels.value.includes(c.id))
+  
+  selectedModels.forEach(model => {
+    const basePath = `${apiGeneratorConfig.value.prefix}/${model.name}`
+    
+    if (apiGeneratorConfig.value.endpoints.includes('list')) {
+      apis.push({ method: 'GET', path: basePath, description: `获取${model.display_name || model.name}列表` })
+    }
+    if (apiGeneratorConfig.value.endpoints.includes('detail')) {
+      apis.push({ method: 'GET', path: `${basePath}/:id`, description: `获取${model.display_name || model.name}详情` })
+    }
+    if (apiGeneratorConfig.value.endpoints.includes('create')) {
+      apis.push({ method: 'POST', path: basePath, description: `创建${model.display_name || model.name}` })
+    }
+    if (apiGeneratorConfig.value.endpoints.includes('update')) {
+      apis.push({ method: 'PUT', path: `${basePath}/:id`, description: `更新${model.display_name || model.name}` })
+    }
+    if (apiGeneratorConfig.value.endpoints.includes('delete')) {
+      apis.push({ method: 'DELETE', path: `${basePath}/:id`, description: `删除${model.display_name || model.name}` })
+    }
+    if (apiGeneratorConfig.value.endpoints.includes('batch_delete')) {
+      apis.push({ method: 'POST', path: `${basePath}/batch-delete`, description: `批量删除${model.display_name || model.name}` })
+    }
+  })
+  
+  generatedApis.value = apis
+  
+  // 生成Go代码
+  generatedGoCode.value = generateGoCode(selectedModels)
+  
+  apiGeneratorStep.value = 2
+}
+
+// 生成Go代码
+const generateGoCode = (models) => {
+  let code = `package api
+
+import (
+    "github.com/gin-gonic/gin"
+    "net/http"
+)
+
+`
+  
+  models.forEach(model => {
+    const modelName = model.name.charAt(0).toUpperCase() + model.name.slice(1)
+    code += `// ${modelName} API Handlers
+
+func Get${modelName}List(c *gin.Context) {
+    // TODO: Implement list query
+    c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+}
+
+func Get${modelName}Detail(c *gin.Context) {
+    id := c.Param("id")
+    // TODO: Implement detail query
+    c.JSON(http.StatusOK, gin.H{"id": id})
+}
+
+func Create${modelName}(c *gin.Context) {
+    // TODO: Implement create
+    c.JSON(http.StatusCreated, gin.H{"message": "created"})
+}
+
+func Update${modelName}(c *gin.Context) {
+    id := c.Param("id")
+    // TODO: Implement update
+    c.JSON(http.StatusOK, gin.H{"id": id, "message": "updated"})
+}
+
+func Delete${modelName}(c *gin.Context) {
+    id := c.Param("id")
+    // TODO: Implement delete
+    c.JSON(http.StatusOK, gin.H{"id": id, "message": "deleted"})
+}
+
+`
+  })
+  
+  // 添加路由注册
+code += `// RegisterRoutes registers all API routes
+func RegisterRoutes(r *gin.Engine) {
+`
+  models.forEach(model => {
+    const modelName = model.name.charAt(0).toUpperCase() + model.name.slice(1)
+    code += `    // ${model.display_name || model.name} routes
+    r.GET("${apiGeneratorConfig.value.prefix}/${model.name}", Get${modelName}List)
+    r.GET("${apiGeneratorConfig.value.prefix}/${model.name}/:id", Get${modelName}Detail)
+    r.POST("${apiGeneratorConfig.value.prefix}/${model.name}", Create${modelName})
+    r.PUT("${apiGeneratorConfig.value.prefix}/${model.name}/:id", Update${modelName})
+    r.DELETE("${apiGeneratorConfig.value.prefix}/${model.name}/:id", Delete${modelName})
+`
+  })
+  code += `}
+`
+  
+  return code
+}
+
+// 获取HTTP方法的标签类型
+const getMethodTagType = (method) => {
+  const types = {
+    'GET': 'success',
+    'POST': 'primary',
+    'PUT': 'warning',
+    'DELETE': 'danger'
+  }
+  return types[method] || 'info'
+}
+
+// 复制所有API代码
+const copyAllApiCode = () => {
+  navigator.clipboard.writeText(generatedGoCode.value)
+  ElMessage.success('API代码已复制到剪贴板')
+}
+
+// 复制指定语言的代码
+const copyApiCode = (lang) => {
+  if (lang === 'go') {
+    navigator.clipboard.writeText(generatedGoCode.value)
+    ElMessage.success('Go代码已复制到剪贴板')
+  }
+}
+
+// 下载API代码
+const downloadApiCode = () => {
+  const blob = new Blob([generatedGoCode.value], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'api_handlers.go'
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('代码文件已下载')
+}
+
+// 部署API
+const deployApi = () => {
+  ElMessage.info('部署功能开发中...')
+}
+
+// 生成页面预览
+const generatePagePreview = () => {
+  const model = collections.value.find(c => c.id === selectedPageModel.value)
+  if (!model) return
+  
+  // 如果没有选择字段，默认选择所有字段
+  if (pageGeneratorConfig.value.listFields.length === 0) {
+    pageGeneratorConfig.value.listFields = (model.fields || []).map(f => f.name)
+  }
+  
+  // 生成Vue代码
+  generatedVueCode.value = generateVueCode(model)
+  
+  pageGeneratorStep.value = 2
+}
+
+// 生成Vue代码
+const generateVueCode = (model) => {
+  const modelName = model.name.charAt(0).toUpperCase() + model.name.slice(1)
+  const fields = model.fields || []
+  
+  let code = `<template>
+  <div class="${model.name}-list">
+    <div class="page-header">
+      <h2>${model.display_name || model.name}管理</h2>
+      <el-button type="primary" @click="showAddDialog = true">新增</el-button>
+    </div>
+`
+  
+  if (pageGeneratorConfig.value.enableSearch) {
+    code += `    
+    <div class="search-bar">
+      <el-input v-model="searchKeyword" placeholder="搜索..." style="width: 300px;" clearable />
+      <el-button type="primary" @click="handleSearch">搜索</el-button>
+    </div>
+`
+  }
+  
+  code += `
+    <el-table :data="tableData" style="width: 100%">
+`
+  
+  pageGeneratorConfig.value.listFields.forEach(fieldName => {
+    const field = fields.find(f => f.name === fieldName)
+    if (field) {
+      code += `      <el-table-column prop="${field.name}" label="${field.display_name || field.name}" />
+`
+    }
+  })
+  
+  code += `      <el-table-column label="操作" width="180">
+        <template #default="{ row }">
+          <el-button size="small" @click="handleEdit(row)">编辑</el-button>
+          <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+`
+  
+  if (pageGeneratorConfig.value.enablePagination) {
+    code += `
+    <el-pagination
+      v-model:current-page="currentPage"
+      v-model:page-size="pageSize"
+      :total="total"
+      layout="total, prev, pager, next"
+      @current-change="fetchData"
+    />
+`
+  }
+  
+  code += `  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+
+const tableData = ref([])
+const searchKeyword = ref('')
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+const showAddDialog = ref(false)
+
+const fetchData = async () => {
+  // TODO: 调用API获取数据
+}
+
+const handleSearch = () => {
+  currentPage.value = 1
+  fetchData()
+}
+
+const handleEdit = (row) => {
+  // TODO: 编辑逻辑
+}
+
+const handleDelete = async (row) => {
+  await ElMessageBox.confirm('确定要删除吗？', '提示')
+  // TODO: 调用删除API
+  ElMessage.success('删除成功')
+  fetchData()
+}
+
+onMounted(() => {
+  fetchData()
+})
+<\/script>
+`
+  
+  return code
+}
+
+// 获取字段标签
+const getFieldLabel = (fieldName) => {
+  const model = collections.value.find(c => c.id === selectedPageModel.value)
+  if (!model) return fieldName
+  const field = (model.fields || []).find(f => f.name === fieldName)
+  return field?.display_name || fieldName
+}
+
+// 复制页面代码
+const copyPageCode = () => {
+  navigator.clipboard.writeText(generatedVueCode.value)
+  ElMessage.success('Vue代码已复制到剪贴板')
+}
+
+// 下载页面代码
+const downloadPageCode = () => {
+  const model = collections.value.find(c => c.id === selectedPageModel.value)
+  const fileName = model ? `${model.name}List.vue` : 'page.vue'
+  
+  const blob = new Blob([generatedVueCode.value], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('页面代码已下载')
+}
+
+// 切换全选模型
+const toggleSelectAllModels = (val) => {
+  if (val) {
+    codeGeneratorConfig.value.selectedModels = collections.value.map(c => c.id)
+  } else {
+    codeGeneratorConfig.value.selectedModels = []
+  }
+}
+
+// 生成完整代码
+const generateFullCode = async () => {
+  const selectedModels = collections.value.filter(c => 
+    codeGeneratorConfig.value.selectedModels.includes(c.id)
+  )
+  
+  if (selectedModels.length === 0) {
+    ElMessage.warning('请选择至少一个数据模型')
+    return
+  }
+  
+  // 创建ZIP文件内容
+  let zipContent = ''
+  
+  // 后端API代码
+  if (codeGeneratorConfig.value.generateItems.includes('backend_api')) {
+    const goCode = generateGoCode(selectedModels)
+    zipContent += '=== backend/api/handlers.go ===\n' + goCode + '\n\n'
+  }
+  
+  // 前端页面代码
+  if (codeGeneratorConfig.value.generateItems.includes('frontend_pages')) {
+    selectedModels.forEach(model => {
+      const vueCode = generateVueCode(model)
+      zipContent += `=== frontend/pages/${model.name}List.vue ===\n` + vueCode + '\n\n'
+    })
+  }
+  
+  // 数据库SQL
+  if (codeGeneratorConfig.value.generateItems.includes('database_sql')) {
+    let sqlCode = '-- Database Schema\n\n'
+    selectedModels.forEach(model => {
+      sqlCode += `CREATE TABLE IF NOT EXISTS ${model.name} (\n`
+      sqlCode += '  id BIGINT PRIMARY KEY AUTO_INCREMENT,\n'
+      ;(model.fields || []).forEach(field => {
+        let sqlType = 'VARCHAR(255)'
+        if (field.type === 'number') sqlType = 'DECIMAL(10,2)'
+        if (field.type === 'boolean') sqlType = 'TINYINT(1)'
+        if (field.type === 'object' || field.type === 'array') sqlType = 'JSON'
+        sqlCode += `  ${field.name} ${sqlType}${field.required ? ' NOT NULL' : ''},\n`
+      })
+      sqlCode += '  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n'
+      sqlCode += '  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n'
+      sqlCode += ');\n\n'
+    })
+    zipContent += '=== database/schema.sql ===\n' + sqlCode + '\n\n'
+  }
+  
+  // 下载文件
+  const blob = new Blob([zipContent], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `generated_code_${Date.now()}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('代码文件已生成并下载')
+}
+
+// ==================== 结束功能生成器相关函数 ====================
 
 // 获取APP信息
 const fetchAppInfo = async () => {
@@ -2916,5 +3753,210 @@ watch(() => currentPage.value, (newVal) => {
       border-radius: 4px;
     }
   }
+}
+
+/* 功能生成器样式 */
+.generator-steps {
+  margin: 20px 0 30px;
+  padding: 0 40px;
+}
+
+.generator-content {
+  padding: 20px;
+  
+  h3 {
+    margin-bottom: 20px;
+    font-size: 16px;
+    color: #303133;
+  }
+}
+
+.model-select-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.model-select-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  
+  &:hover {
+    border-color: #409eff;
+    box-shadow: 0 2px 8px rgba(64, 158, 255, 0.1);
+  }
+  
+  &.selected {
+    border-color: #409eff;
+    background: #ecf5ff;
+  }
+  
+  .model-info {
+    flex: 1;
+    
+    h4 {
+      margin: 0 0 4px;
+      font-size: 14px;
+      color: #303133;
+    }
+    
+    .model-name {
+      font-size: 12px;
+      color: #909399;
+      font-family: monospace;
+    }
+    
+    p {
+      margin: 8px 0 0;
+      font-size: 12px;
+      color: #606266;
+    }
+    
+    .model-stats {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #909399;
+    }
+  }
+}
+
+.step-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #ebeef5;
+}
+
+.preview-section {
+  margin-bottom: 24px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  overflow: hidden;
+  
+  .preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f5f7fa;
+    border-bottom: 1px solid #e4e7ed;
+    
+    span {
+      font-weight: 500;
+      color: #303133;
+    }
+  }
+}
+
+.api-preview-list {
+  padding: 16px;
+  
+  .api-preview-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px dashed #ebeef5;
+    
+    &:last-child {
+      border-bottom: none;
+    }
+    
+    code {
+      font-family: monospace;
+      color: #409eff;
+    }
+    
+    .api-desc {
+      color: #909399;
+      font-size: 13px;
+    }
+  }
+}
+
+.code-preview {
+  margin: 0;
+  padding: 16px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-x: auto;
+  max-height: 400px;
+  
+  code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+  }
+}
+
+.preview-tabs {
+  margin-bottom: 24px;
+}
+
+.page-preview-frame {
+  padding: 20px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  background: #fff;
+  
+  .preview-toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+}
+
+.code-gen-options {
+  h3 {
+    margin-bottom: 24px;
+  }
+  
+  .option-section {
+    margin-bottom: 24px;
+    padding: 20px;
+    background: #f5f7fa;
+    border-radius: 8px;
+    
+    h4 {
+      margin: 0 0 16px;
+      font-size: 14px;
+      color: #303133;
+    }
+  }
+  
+  .model-checkbox-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+}
+
+.code-gen-actions {
+  text-align: center;
+  padding: 30px 0;
+  
+  .hint {
+    margin-top: 12px;
+    color: #909399;
+    font-size: 13px;
+  }
+}
+
+.empty-state {
+  padding: 40px 0;
+  text-align: center;
 }
 </style>
