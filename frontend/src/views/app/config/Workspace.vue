@@ -112,6 +112,88 @@
         </div>
       </div>
 
+      <!-- 数据模型管理 -->
+      <div v-else-if="currentMenu === 'datamodel'" class="content-section">
+        <div class="section-header">
+          <h2>数据模型管理</h2>
+          <p>定义数据结构，自动生成CRUD API</p>
+        </div>
+        
+        <!-- 操作栏 -->
+        <div class="toolbar">
+          <div class="search-area">
+            <el-input 
+              v-model="collectionSearch" 
+              placeholder="搜索数据模型" 
+              prefix-icon="Search"
+              clearable
+              style="width: 300px"
+              @keyup.enter="fetchCollections"
+            />
+            <el-button type="primary" @click="fetchCollections">搜索</el-button>
+          </div>
+          <div class="action-area">
+            <el-button type="primary" :icon="Plus" @click="showCollectionDialog = true">新建数据模型</el-button>
+          </div>
+        </div>
+        
+        <!-- 数据模型卡片列表 -->
+        <div class="collections-grid" v-loading="collectionLoading">
+          <div v-for="collection in collections" :key="collection.id" class="collection-card">
+            <div class="card-header">
+              <div class="collection-info">
+                <el-icon class="collection-icon"><Grid /></el-icon>
+                <div class="collection-meta">
+                  <h3>{{ collection.display_name }}</h3>
+                  <span class="collection-name">{{ collection.name }}</span>
+                </div>
+              </div>
+              <el-tag :type="collection.status === 1 ? 'success' : 'info'" size="small">
+                {{ collection.status === 1 ? '已启用' : '已禁用' }}
+              </el-tag>
+            </div>
+            
+            <p class="collection-desc">{{ collection.description || '暂无描述' }}</p>
+            
+            <div class="collection-stats">
+              <div class="stat-item">
+                <span class="stat-label">字段数</span>
+                <span class="stat-value">{{ collection.schema?.fields?.length || 0 }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">权限</span>
+                <span class="stat-value">{{ getPermissionLabel(collection.permissions?.read) }}</span>
+              </div>
+            </div>
+            
+            <div class="card-actions">
+              <el-button size="small" @click="viewCollectionData(collection)">
+                <el-icon><View /></el-icon>查看数据
+              </el-button>
+              <el-button size="small" @click="editCollection(collection)">
+                <el-icon><Edit /></el-icon>编辑
+              </el-button>
+              <el-button size="small" type="danger" @click="deleteCollection(collection)">
+                <el-icon><Delete /></el-icon>删除
+              </el-button>
+            </div>
+            
+            <div class="api-info">
+              <span class="api-label">API端点:</span>
+              <code class="api-endpoint">/api/v1/baas/apps/{{ appId }}/data/{{ collection.name }}</code>
+              <el-button size="small" link @click="copyApiEndpoint(collection.name)">
+                <el-icon><DocumentCopy /></el-icon>
+              </el-button>
+            </div>
+          </div>
+          
+          <!-- 空状态 -->
+          <el-empty v-if="collections.length === 0 && !collectionLoading" description="暂无数据模型，点击上方按钮创建">
+            <el-button type="primary" @click="showCollectionDialog = true">新建数据模型</el-button>
+          </el-empty>
+        </div>
+      </div>
+
       <!-- 用户管理 -->
       <div v-else-if="currentMenu === 'users'" class="content-section">
         <div class="section-header">
@@ -970,6 +1052,110 @@
         </el-button>
       </template>
     </el-dialog>
+    
+    <!-- 数据模型对话框 -->
+    <el-dialog v-model="showCollectionDialog" :title="editingCollection ? '编辑数据模型' : '新建数据模型'" width="700px">
+      <el-form :model="collectionForm" label-width="100px">
+        <el-form-item label="模型名称" required>
+          <el-input v-model="collectionForm.name" placeholder="英文名称，如 products" :disabled="!!editingCollection" />
+        </el-form-item>
+        <el-form-item label="显示名称" required>
+          <el-input v-model="collectionForm.display_name" placeholder="中文名称，如 商品" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="collectionForm.description" type="textarea" :rows="2" placeholder="数据模型的描述信息" />
+        </el-form-item>
+        
+        <el-divider content-position="left">字段定义</el-divider>
+        
+        <div class="field-list">
+          <div v-for="(field, index) in collectionForm.schema.fields" :key="index" class="field-item">
+            <div class="field-inputs">
+              <el-input v-model="field.name" placeholder="字段名" />
+              <el-input v-model="field.display_name" placeholder="显示名" />
+              <el-select v-model="field.type" placeholder="类型">
+                <el-option label="字符串" value="string" />
+                <el-option label="数字" value="number" />
+                <el-option label="布尔" value="boolean" />
+                <el-option label="日期" value="date" />
+                <el-option label="数组" value="array" />
+                <el-option label="对象" value="object" />
+              </el-select>
+              <el-checkbox v-model="field.required">必填</el-checkbox>
+              <el-checkbox v-model="field.unique">唯一</el-checkbox>
+            </div>
+            <el-button type="danger" :icon="Delete" circle @click="removeField(index)" />
+          </div>
+          <el-button type="primary" :icon="Plus" @click="addField">添加字段</el-button>
+        </div>
+        
+        <el-divider content-position="left">权限设置</el-divider>
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="读取权限">
+              <el-select v-model="collectionForm.permissions.read">
+                <el-option label="公开" value="public" />
+                <el-option label="登录用户" value="auth" />
+                <el-option label="仅创建者" value="owner" />
+                <el-option label="仅管理员" value="admin" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="创建权限">
+              <el-select v-model="collectionForm.permissions.create">
+                <el-option label="公开" value="public" />
+                <el-option label="登录用户" value="auth" />
+                <el-option label="仅管理员" value="admin" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="更新权限">
+              <el-select v-model="collectionForm.permissions.update">
+                <el-option label="仅创建者" value="owner" />
+                <el-option label="仅管理员" value="admin" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="删除权限">
+              <el-select v-model="collectionForm.permissions.delete">
+                <el-option label="仅创建者" value="owner" />
+                <el-option label="仅管理员" value="admin" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCollectionDialog = false; resetCollectionForm()">取消</el-button>
+        <el-button type="primary" @click="saveCollection">保存</el-button>
+      </template>
+    </el-dialog>
+    
+    <!-- 数据查看对话框 -->
+    <el-dialog v-model="showDataDialog" :title="currentCollection?.display_name + ' - 数据列表'" width="900px">
+      <div v-loading="documentLoading">
+        <el-table :data="documentList" stripe>
+          <el-table-column prop="id" label="ID" width="80" />
+          <el-table-column v-for="field in currentCollection?.schema?.fields" :key="field.name" :prop="'data.' + field.name" :label="field.display_name || field.name" />
+          <el-table-column prop="created_at" label="创建时间" width="180" />
+        </el-table>
+        <el-pagination
+          v-if="documentTotal > 0"
+          v-model:current-page="documentPage"
+          v-model:page-size="documentPageSize"
+          :total="documentTotal"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          @change="fetchDocuments"
+          style="margin-top: 16px"
+        />
+        <el-empty v-if="documentList.length === 0 && !documentLoading" description="暂无数据" />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -982,7 +1168,8 @@ import {
   DataLine, User, UserFilled, Warning, Top, Bottom,
   Plus, Download, Refresh, Search, Delete, Upload, View, Edit,
   House, Management, Bell, Document, Promotion, ArrowLeft,
-  FolderOpened, DataAnalysis, Monitor, PieChart, TrendCharts, Timer, Connection, Lock
+  FolderOpened, DataAnalysis, Monitor, PieChart, TrendCharts, Timer, Connection, Lock,
+  Grid, DocumentCopy
 } from '@element-plus/icons-vue'
 import {
   getUserList, getUserStats, updateUserStatus,
@@ -1007,6 +1194,7 @@ const props = defineProps({
 // 菜单配置
 const menuItems = [
   { key: 'overview', label: '数据概览', icon: House },
+  { key: 'datamodel', label: '数据模型', icon: Grid },
   { key: 'users', label: '用户管理', icon: User },
   { key: 'messages', label: '消息推送', icon: Bell },
   { key: 'storage', label: '存储服务', icon: FolderOpened },
@@ -1033,6 +1221,37 @@ const requestChartRef = ref(null)
 const moduleChartRef = ref(null)
 let requestChart = null
 let moduleChart = null
+
+// 数据模型管理
+const collectionSearch = ref('')
+const collections = ref([])
+const collectionLoading = ref(false)
+const showCollectionDialog = ref(false)
+const collectionForm = ref({
+  name: '',
+  display_name: '',
+  description: '',
+  schema: {
+    fields: []
+  },
+  permissions: {
+    read: 'public',
+    create: 'auth',
+    update: 'owner',
+    delete: 'owner'
+  }
+})
+const editingCollection = ref(null)
+const showDataDialog = ref(false)
+const currentCollection = ref(null)
+const documentList = ref([])
+const documentLoading = ref(false)
+const documentPage = ref(1)
+const documentPageSize = ref(10)
+const documentTotal = ref(0)
+const showDocumentDialog = ref(false)
+const documentForm = ref({})
+const editingDocument = ref(null)
 
 // 用户管理
 const userSearch = ref('')
@@ -1186,6 +1405,172 @@ const getVersionStatusType = (status) => {
 const getVersionStatusText = (status) => {
   const texts = { published: '已发布', draft: '草稿', offline: '已下线' }
   return texts[status] || status
+}
+
+// 数据模型管理方法
+const fetchCollections = async () => {
+  if (!props.appId) return
+  collectionLoading.value = true
+  try {
+    const res = await fetch(`/api/v1/baas/apps/${props.appId}/collections`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    const data = await res.json()
+    if (data.code === 0) {
+      collections.value = data.data.list || []
+    }
+  } catch (error) {
+    console.error('获取数据模型列表失败:', error)
+  } finally {
+    collectionLoading.value = false
+  }
+}
+
+const getPermissionLabel = (permission) => {
+  const labels = {
+    'public': '公开',
+    'auth': '登录用户',
+    'owner': '仅创建者',
+    'admin': '仅管理员'
+  }
+  return labels[permission] || permission
+}
+
+const viewCollectionData = async (collection) => {
+  currentCollection.value = collection
+  showDataDialog.value = true
+  await fetchDocuments()
+}
+
+const fetchDocuments = async () => {
+  if (!currentCollection.value) return
+  documentLoading.value = true
+  try {
+    const res = await fetch(`/api/v1/baas/apps/${props.appId}/data/${currentCollection.value.name}?page=${documentPage.value}&size=${documentPageSize.value}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    const data = await res.json()
+    if (data.code === 0) {
+      documentList.value = data.data.list || []
+      documentTotal.value = data.data.total || 0
+    }
+  } catch (error) {
+    console.error('获取数据失败:', error)
+  } finally {
+    documentLoading.value = false
+  }
+}
+
+const editCollection = (collection) => {
+  editingCollection.value = collection
+  collectionForm.value = {
+    name: collection.name,
+    display_name: collection.display_name,
+    description: collection.description,
+    schema: collection.schema || { fields: [] },
+    permissions: collection.permissions || {
+      read: 'public',
+      create: 'auth',
+      update: 'owner',
+      delete: 'owner'
+    }
+  }
+  showCollectionDialog.value = true
+}
+
+const deleteCollection = async (collection) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除数据模型 "${collection.display_name}" 吗？此操作不可恢复。`, '删除确认', {
+      type: 'warning'
+    })
+    const res = await fetch(`/api/v1/baas/apps/${props.appId}/collections/${collection.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    const data = await res.json()
+    if (data.code === 0) {
+      ElMessage.success('删除成功')
+      fetchCollections()
+    } else {
+      ElMessage.error(data.message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除数据模型失败:', error)
+    }
+  }
+}
+
+const saveCollection = async () => {
+  try {
+    const url = editingCollection.value 
+      ? `/api/v1/baas/apps/${props.appId}/collections/${editingCollection.value.id}`
+      : `/api/v1/baas/apps/${props.appId}/collections`
+    const method = editingCollection.value ? 'PUT' : 'POST'
+    
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(collectionForm.value)
+    })
+    const data = await res.json()
+    if (data.code === 0) {
+      ElMessage.success(editingCollection.value ? '更新成功' : '创建成功')
+      showCollectionDialog.value = false
+      resetCollectionForm()
+      fetchCollections()
+    } else {
+      ElMessage.error(data.message || '保存失败')
+    }
+  } catch (error) {
+    console.error('保存数据模型失败:', error)
+    ElMessage.error('保存失败')
+  }
+}
+
+const resetCollectionForm = () => {
+  editingCollection.value = null
+  collectionForm.value = {
+    name: '',
+    display_name: '',
+    description: '',
+    schema: { fields: [] },
+    permissions: {
+      read: 'public',
+      create: 'auth',
+      update: 'owner',
+      delete: 'owner'
+    }
+  }
+}
+
+const addField = () => {
+  collectionForm.value.schema.fields.push({
+    name: '',
+    display_name: '',
+    type: 'string',
+    required: false,
+    unique: false
+  })
+}
+
+const removeField = (index) => {
+  collectionForm.value.schema.fields.splice(index, 1)
+}
+
+const copyApiEndpoint = (collectionName) => {
+  const endpoint = `/api/v1/baas/apps/${props.appId}/data/${collectionName}`
+  navigator.clipboard.writeText(endpoint)
+  ElMessage.success('API端点已复制到剪贴板')
 }
 
 // 获取用户列表
@@ -2221,6 +2606,8 @@ watch(currentMenu, (val) => {
   if (val === 'overview') {
     setTimeout(initCharts, 100)
     loadData()
+  } else if (val === 'datamodel') {
+    fetchCollections()
   } else if (val === 'users') {
     fetchUserList()
   } else if (val === 'logs') {
@@ -2677,6 +3064,135 @@ watch(() => props.appId, () => {
     .search-area, .action-area {
       width: 100%;
       flex-wrap: wrap;
+    }
+  }
+}
+
+// 数据模型管理样式
+.collections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.collection-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.3s;
+  
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+  
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    
+    .collection-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      
+      .collection-icon {
+        font-size: 32px;
+        color: #409eff;
+      }
+      
+      .collection-meta {
+        h3 {
+          margin: 0 0 4px 0;
+          font-size: 16px;
+          font-weight: 600;
+        }
+        
+        .collection-name {
+          font-size: 12px;
+          color: #909399;
+          font-family: monospace;
+        }
+      }
+    }
+  }
+  
+  .collection-desc {
+    color: #606266;
+    font-size: 14px;
+    margin: 0 0 16px 0;
+    line-height: 1.5;
+  }
+  
+  .collection-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #f5f7fa;
+    border-radius: 6px;
+    
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      
+      .stat-label {
+        font-size: 12px;
+        color: #909399;
+      }
+      
+      .stat-value {
+        font-size: 16px;
+        font-weight: 600;
+        color: #303133;
+      }
+    }
+  }
+  
+  .card-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  
+  .api-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f5f7fa;
+    border-radius: 4px;
+    font-size: 12px;
+    
+    .api-label {
+      color: #909399;
+    }
+    
+    .api-endpoint {
+      flex: 1;
+      color: #409eff;
+      word-break: break-all;
+    }
+  }
+}
+
+.field-list {
+  .field-item {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    background: #f5f7fa;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    
+    .field-inputs {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
     }
   }
 }

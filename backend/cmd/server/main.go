@@ -13,6 +13,7 @@ import (
 	"app-platform-backend/internal/api/v1/app"
 	moduleapi "app-platform-backend/internal/api/v1/module"
 	statsapi "app-platform-backend/internal/api/v1/stats"
+	"app-platform-backend/internal/api/v1/baas"
 	"app-platform-backend/internal/config"
 	"app-platform-backend/internal/middleware"
 	"app-platform-backend/internal/pkg/database"
@@ -152,8 +153,15 @@ func main() {
 			}
 			log.Printf("[Main] %d module routes registered", len(modules))
 
-			// 模块模板管理（核心功能，不通过模块注册）
-			moduleGroup := auth.Group("/modules")
+// ========================================
+				// BaaS 数据模型管理
+				// ========================================
+				baasHandler := baas.NewHandler(database.GetDB())
+				baasHandler.RegisterRoutes(auth)
+				log.Println("[Main] BaaS routes registered")
+
+				// 模块模板管理（核心功能，不通过模块注册）
+				moduleGroup := auth.Group("/modules")
 			{
 				moduleGroup.GET("/templates", moduleapi.GetAllTemplates)
 				moduleGroup.GET("/dependencies/detect/:module_code", moduleapi.DetectCircularDependency)

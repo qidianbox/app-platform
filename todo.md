@@ -516,3 +516,43 @@
 - [x] 生成视觉测试报告
 - [ ] 覆盖所有页面的视觉回归测试
 - [ ] 生成视觉测试报告
+
+
+## 2026-01-11 BaaS功能开发 - 第一阶段
+
+### 后端API开发
+- [x] 创建BaaS API处理器 (internal/api/v1/baas/baas.go)
+- [x] 实现数据模型CRUD API
+  - [x] GET /api/v1/baas/apps/:appId/collections - 获取数据模型列表
+  - [x] POST /api/v1/baas/apps/:appId/collections - 创建数据模型
+  - [x] GET /api/v1/baas/apps/:appId/collections/:collectionId - 获取单个数据模型
+  - [x] PUT /api/v1/baas/apps/:appId/collections/:collectionId - 更新数据模型
+  - [x] DELETE /api/v1/baas/apps/:appId/collections/:collectionId - 删除数据模型
+- [x] 实现数据文档CRUD API
+  - [x] GET /api/v1/baas/apps/:appId/data/:collectionName - 获取文档列表
+  - [x] POST /api/v1/baas/apps/:appId/data/:collectionName - 创建文档
+  - [x] GET /api/v1/baas/apps/:appId/data/:collectionName/:docId - 获取单个文档
+  - [x] PUT /api/v1/baas/apps/:appId/data/:collectionName/:docId - 更新文档
+  - [x] DELETE /api/v1/baas/apps/:appId/data/:collectionName/:docId - 删除文档
+- [x] 在main.go中注册BaaS路由
+
+### 数据库表
+- [x] 创建data_collections表（数据模型定义）
+- [x] 创建data_documents表（数据文档存储）
+
+### 前端页面开发
+- [x] 在工作台侧边栏添加"数据模型"菜单项
+- [x] 实现数据模型列表展示（卡片式布局）
+- [x] 实现新建/编辑数据模型对话框
+- [x] 实现字段定义功能（字段名、类型、必填、默认值）
+- [x] 实现权限设置（读取/创建/更新/删除权限）
+- [x] 实现查看数据功能（数据列表对话框）
+- [x] 实现删除数据模型功能
+- [x] 显示API端点信息
+
+### 功能测试
+- [x] 测试后端API（curl测试通过）
+- [x] 测试前端页面（数据模型列表显示正常）
+- [x] 测试创建数据模型功能
+- [x] 测试查看数据功能
+

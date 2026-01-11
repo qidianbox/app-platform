@@ -107,7 +107,7 @@
       
       <!-- 右侧空白区域 -->
       <div class="header-right"></div>
-    </div>
+    </header>
 
     <div class="main-container">
       <!-- 左侧边栏 - 仅在配置中心模式显示 -->
