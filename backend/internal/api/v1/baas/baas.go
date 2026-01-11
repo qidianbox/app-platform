@@ -14,14 +14,20 @@ import (
 type DataCollection struct {
 	ID          uint            `json:"id" gorm:"primaryKey"`
 	AppID       uint            `json:"app_id" gorm:"index"`
-	Name        string          `json:"name" gorm:"size:100;not null"`
-	DisplayName string          `json:"display_name" gorm:"size:200"`
+	Name        string          `json:"name" gorm:"size:50;not null"`
+	DisplayName string          `json:"display_name" gorm:"size:100"`
 	Description string          `json:"description" gorm:"type:text"`
+	Schema      json.RawMessage `json:"schema" gorm:"type:json"`
+	Indexes     json.RawMessage `json:"indexes" gorm:"type:json"`
+	Permissions json.RawMessage `json:"permissions" gorm:"type:json"`
+	Hooks       json.RawMessage `json:"hooks" gorm:"type:json"`
+	Status      int             `json:"status" gorm:"default:1"`
+	CreatedBy   uint            `json:"created_by"`
 	Fields      json.RawMessage `json:"fields" gorm:"type:json"`
 	ReadPerm    string          `json:"read_perm" gorm:"size:50;default:public"`
 	CreatePerm  string          `json:"create_perm" gorm:"size:50;default:authenticated"`
 	UpdatePerm  string          `json:"update_perm" gorm:"size:50;default:creator"`
-	DeletePerm  string          `json:"delete_perm" gorm:"size:50;default:creator"`
+	DeletePerm  string          `json:"delete_perm" gorm:"size:50;default:admin"`
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
 }
@@ -178,16 +184,21 @@ func (h *Handler) CreateCollection(c *gin.Context) {
 		req.DeletePerm = "creator"
 	}
 
+	// 创建空的schema
+	emptySchema := json.RawMessage(`{}`)
+
 	collection := DataCollection{
 		AppID:       uint(appID),
 		Name:        req.Name,
 		DisplayName: req.DisplayName,
 		Description: req.Description,
+		Schema:      emptySchema,
 		Fields:      req.Fields,
 		ReadPerm:    req.ReadPerm,
 		CreatePerm:  req.CreatePerm,
 		UpdatePerm:  req.UpdatePerm,
 		DeletePerm:  req.DeletePerm,
+		Status:      1,
 	}
 
 	if err := h.db.Create(&collection).Error; err != nil {
@@ -332,6 +343,159 @@ func (h *Handler) ListDocuments(c *gin.Context) {
 	})
 }
 
+// FieldDefinition 字段定义
+type FieldDefinition struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"display_name"`
+	Type        string `json:"type"`
+	Required    bool   `json:"required"`
+	Unique      bool   `json:"unique"`
+}
+
+// Schema 数据模型结构
+type Schema struct {
+	Fields []FieldDefinition `json:"fields"`
+}
+
+// validateDocument 验证文档数据
+func (h *Handler) validateDocument(collection *DataCollection, data map[string]interface{}) error {
+	if collection.Fields == nil {
+		return nil
+	}
+
+	var schema Schema
+	if err := json.Unmarshal(collection.Fields, &schema); err != nil {
+		return nil // 如果解析失败，跳过验证
+	}
+
+	for _, field := range schema.Fields {
+		value, exists := data[field.Name]
+
+		// 必填验证
+		if field.Required && (!exists || value == nil || value == "") {
+			return &ValidationError{Field: field.DisplayName, Message: "不能为空"}
+		}
+
+		if !exists || value == nil {
+			continue
+		}
+
+		// 类型验证
+		switch field.Type {
+		case "string":
+			if _, ok := value.(string); !ok {
+				return &ValidationError{Field: field.DisplayName, Message: "应为字符串类型"}
+			}
+		case "number":
+			switch value.(type) {
+			case float64, int, int64, float32:
+				// OK
+			default:
+				return &ValidationError{Field: field.DisplayName, Message: "应为数字类型"}
+			}
+		case "boolean":
+			if _, ok := value.(bool); !ok {
+				return &ValidationError{Field: field.DisplayName, Message: "应为布尔类型"}
+			}
+		case "array":
+			if _, ok := value.([]interface{}); !ok {
+				return &ValidationError{Field: field.DisplayName, Message: "应为数组类型"}
+			}
+		case "object":
+			if _, ok := value.(map[string]interface{}); !ok {
+				return &ValidationError{Field: field.DisplayName, Message: "应为对象类型"}
+			}
+		}
+
+		// 唯一性验证
+		if field.Unique && value != nil && value != "" {
+			var count int64
+			// 使用JSON查询检查唯一性
+			h.db.Model(&DataDocument{}).Where("collection_id = ? AND JSON_EXTRACT(data, ?) = ?", 
+				collection.ID, "$."+field.Name, value).Count(&count)
+			if count > 0 {
+				return &ValidationError{Field: field.DisplayName, Message: "已存在相同的值"}
+			}
+		}
+	}
+
+	return nil
+}
+
+// ValidationError 验证错误
+type ValidationError struct {
+	Field   string
+	Message string
+}
+
+func (e *ValidationError) Error() string {
+	return e.Field + ": " + e.Message
+}
+
+// validateDocumentForUpdate 更新时验证文档数据（排除当前文档的唯一性检查）
+func (h *Handler) validateDocumentForUpdate(collection *DataCollection, data map[string]interface{}, excludeDocID uint) error {
+	if collection.Fields == nil {
+		return nil
+	}
+
+	var schema Schema
+	if err := json.Unmarshal(collection.Fields, &schema); err != nil {
+		return nil
+	}
+
+	for _, field := range schema.Fields {
+		value, exists := data[field.Name]
+
+		// 必填验证
+		if field.Required && (!exists || value == nil || value == "") {
+			return &ValidationError{Field: field.DisplayName, Message: "不能为空"}
+		}
+
+		if !exists || value == nil {
+			continue
+		}
+
+		// 类型验证
+		switch field.Type {
+		case "string":
+			if _, ok := value.(string); !ok {
+				return &ValidationError{Field: field.DisplayName, Message: "应为字符串类型"}
+			}
+		case "number":
+			switch value.(type) {
+			case float64, int, int64, float32:
+				// OK
+			default:
+				return &ValidationError{Field: field.DisplayName, Message: "应为数字类型"}
+			}
+		case "boolean":
+			if _, ok := value.(bool); !ok {
+				return &ValidationError{Field: field.DisplayName, Message: "应为布尔类型"}
+			}
+		case "array":
+			if _, ok := value.([]interface{}); !ok {
+				return &ValidationError{Field: field.DisplayName, Message: "应为数组类型"}
+			}
+		case "object":
+			if _, ok := value.(map[string]interface{}); !ok {
+				return &ValidationError{Field: field.DisplayName, Message: "应为对象类型"}
+			}
+		}
+
+		// 唯一性验证（排除当前文档）
+		if field.Unique && value != nil && value != "" {
+			var count int64
+			h.db.Model(&DataDocument{}).Where("collection_id = ? AND id != ? AND JSON_EXTRACT(data, ?) = ?", 
+				collection.ID, excludeDocID, "$."+field.Name, value).Count(&count)
+			if count > 0 {
+				return &ValidationError{Field: field.DisplayName, Message: "已存在相同的值"}
+			}
+		}
+	}
+
+	return nil
+}
+
 // CreateDocument 创建文档
 func (h *Handler) CreateDocument(c *gin.Context) {
 	appID, _ := strconv.ParseUint(c.Param("appId"), 10, 64)
@@ -353,7 +517,20 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		return
 	}
 
-	// 获取当前用户ID (从JWT中)
+	// 解析数据进行验证
+	var dataMap map[string]interface{}
+	if err := json.Unmarshal(req.Data, &dataMap); err != nil {
+		fail(c, 400, "数据格式错误")
+		return
+	}
+
+	// 验证数据
+	if err := h.validateDocument(&collection, dataMap); err != nil {
+		fail(c, 400, "数据验证失败: "+err.Error())
+		return
+	}
+
+	// 获取当前用户ID (从 JWT中)
 	userID := uint(0)
 	if uid, exists := c.Get("user_id"); exists {
 		userID = uid.(uint)
@@ -422,6 +599,19 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		fail(c, 400, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 解析数据进行验证
+	var dataMap map[string]interface{}
+	if err := json.Unmarshal(req.Data, &dataMap); err != nil {
+		fail(c, 400, "数据格式错误")
+		return
+	}
+
+	// 验证数据（更新时跳过唯一性检查）
+	if err := h.validateDocumentForUpdate(&collection, dataMap, document.ID); err != nil {
+		fail(c, 400, "数据验证失败: "+err.Error())
 		return
 	}
 

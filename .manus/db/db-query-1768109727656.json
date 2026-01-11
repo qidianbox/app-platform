@@ -1,0 +1,37 @@
+{
+  "query": "SHOW CREATE TABLE data_collections;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3HmF555sZ6wXsVo.885fbf394348 --database cSZcQBnZuHpLU79S85jppV --execute SHOW CREATE TABLE data_collections;",
+  "rows": [
+    {
+      "Table": "data_collections",
+      "Create Table": "CREATE TABLE `data_collections` ("
+    }
+  ],
+  "messages": [
+    "  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,",
+    "  `app_id` bigint(20) unsigned NOT NULL,",
+    "  `name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,",
+    "  `display_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,",
+    "  `description` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,",
+    "  `schema` json NOT NULL,",
+    "  `indexes` json DEFAULT NULL,",
+    "  `permissions` json DEFAULT NULL,",
+    "  `hooks` json DEFAULT NULL,",
+    "  `status` tinyint(4) DEFAULT '1',",
+    "  `created_by` bigint(20) unsigned DEFAULT NULL,",
+    "  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,",
+    "  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,",
+    "  `fields` json DEFAULT NULL,",
+    "  `read_perm` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'public',",
+    "  `create_perm` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'authenticated',",
+    "  `update_perm` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'creator',",
+    "  `delete_perm` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'admin',",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,",
+    "  KEY `idx_app_id` (`app_id`),",
+    "  UNIQUE KEY `uk_app_name` (`app_id`,`name`)",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=30001"
+  ],
+  "stdout": "Table\tCreate Table\ndata_collections\tCREATE TABLE `data_collections` (\n  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,\n  `app_id` bigint(20) unsigned NOT NULL,\n  `name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `display_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `description` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `schema` json NOT NULL,\n  `indexes` json DEFAULT NULL,\n  `permissions` json DEFAULT NULL,\n  `hooks` json DEFAULT NULL,\n  `status` tinyint(4) DEFAULT '1',\n  `created_by` bigint(20) unsigned DEFAULT NULL,\n  `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  `fields` json DEFAULT NULL,\n  `read_perm` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'public',\n  `create_perm` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'authenticated',\n  `update_perm` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'creator',\n  `delete_perm` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'admin',\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  KEY `idx_app_id` (`app_id`),\n  UNIQUE KEY `uk_app_name` (`app_id`,`name`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=30001\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

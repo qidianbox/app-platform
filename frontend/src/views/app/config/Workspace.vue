@@ -160,7 +160,7 @@
             <div class="collection-stats">
               <div class="stat-item">
                 <span class="stat-label">字段数</span>
-                <span class="stat-value">{{ collection.schema?.fields?.length || 0 }}</span>
+                <span class="stat-value">{{ collection.fields?.length || 0 }}</span>
               </div>
               <div class="stat-item">
                 <span class="stat-label">权限</span>
@@ -1071,7 +1071,7 @@
         <el-divider content-position="left">字段定义</el-divider>
         
         <div class="field-list">
-          <div v-for="(field, index) in collectionForm.schema.fields" :key="index" class="field-item">
+          <div v-for="(field, index) in collectionForm.fields" :key="index" class="field-item">
             <div class="field-inputs">
               <el-input v-model="field.name" placeholder="字段名" />
               <el-input v-model="field.display_name" placeholder="显示名" />
@@ -1138,13 +1138,48 @@
     </el-dialog>
     
     <!-- 数据查看对话框 -->
-    <el-dialog v-model="showDataDialog" :title="currentCollection?.display_name + ' - 数据列表'" width="900px">
+    <el-dialog v-model="showDataDialog" :title="currentCollection?.display_name + ' - 数据管理'" width="1000px">
       <div v-loading="documentLoading">
-        <el-table :data="documentList" stripe>
+        <!-- 工具栏 -->
+        <div class="data-toolbar">
+          <div class="toolbar-left">
+            <el-input v-model="documentSearch" placeholder="搜索数据..." style="width: 200px" clearable @clear="fetchDocuments" @keyup.enter="fetchDocuments">
+              <template #prefix><el-icon><Search /></el-icon></template>
+            </el-input>
+            <el-button :icon="Search" @click="fetchDocuments">搜索</el-button>
+          </div>
+          <div class="toolbar-right">
+            <el-button type="primary" :icon="Plus" @click="openDocumentForm()">新增数据</el-button>
+            <el-button :icon="Download" @click="exportDocuments">导出</el-button>
+            <el-button :icon="Upload" @click="showImportDialog = true">导入</el-button>
+            <el-button type="danger" :icon="Delete" :disabled="selectedDocuments.length === 0" @click="batchDeleteDocuments">批量删除</el-button>
+          </div>
+        </div>
+        
+        <!-- 数据表格 -->
+        <el-table :data="documentList" stripe @selection-change="handleDocumentSelection" style="margin-top: 16px">
+          <el-table-column type="selection" width="50" />
           <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column v-for="field in currentCollection?.schema?.fields" :key="field.name" :prop="'data.' + field.name" :label="field.display_name || field.name" />
-          <el-table-column prop="created_at" label="创建时间" width="180" />
+          <el-table-column v-for="field in currentCollection?.fields" :key="field.name" :label="field.display_name || field.name" min-width="120">
+            <template #default="{ row }">
+              <span v-if="field.type === 'boolean'">{{ row.data?.[field.name] ? '是' : '否' }}</span>
+              <span v-else-if="field.type === 'array'">{{ Array.isArray(row.data?.[field.name]) ? row.data[field.name].join(', ') : '-' }}</span>
+              <span v-else-if="field.type === 'object'">{{ row.data?.[field.name] ? JSON.stringify(row.data[field.name]) : '-' }}</span>
+              <span v-else>{{ row.data?.[field.name] ?? '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="created_at" label="创建时间" width="160">
+            <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="150" fixed="right">
+            <template #default="{ row }">
+              <el-button type="primary" link :icon="Edit" @click="openDocumentForm(row)">编辑</el-button>
+              <el-button type="danger" link :icon="Delete" @click="deleteDocument(row)">删除</el-button>
+            </template>
+          </el-table-column>
         </el-table>
+        
+        <!-- 分页 -->
         <el-pagination
           v-if="documentTotal > 0"
           v-model:current-page="documentPage"
@@ -1159,6 +1194,64 @@
       </div>
       <template #footer>
         <el-button @click="showDataDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
+    
+    <!-- 新增/编辑文档对话框 -->
+    <el-dialog v-model="showDocumentFormDialog" :title="editingDocument ? '编辑数据' : '新增数据'" width="600px">
+      <el-form :model="documentForm" :rules="documentFormRules" ref="documentFormRef" label-width="120px">
+        <el-form-item v-for="field in currentCollection?.fields" :key="field.name" :label="field.display_name || field.name" :prop="field.name" :required="field.required">
+          <!-- 字符串类型 -->
+          <el-input v-if="field.type === 'string'" v-model="documentForm[field.name]" :placeholder="'请输入' + (field.display_name || field.name)" />
+          <!-- 数字类型 -->
+          <el-input-number v-else-if="field.type === 'number'" v-model="documentForm[field.name]" :placeholder="'请输入' + (field.display_name || field.name)" style="width: 100%" />
+          <!-- 布尔类型 -->
+          <el-switch v-else-if="field.type === 'boolean'" v-model="documentForm[field.name]" />
+          <!-- 日期类型 -->
+          <el-date-picker v-else-if="field.type === 'date'" v-model="documentForm[field.name]" type="datetime" :placeholder="'请选择' + (field.display_name || field.name)" style="width: 100%" />
+          <!-- 数组类型 -->
+          <div v-else-if="field.type === 'array'" style="width: 100%">
+            <el-tag v-for="(item, index) in (documentForm[field.name] || [])" :key="index" closable @close="removeArrayItem(field.name, index)" style="margin-right: 8px; margin-bottom: 8px">{{ item }}</el-tag>
+            <el-input v-model="arrayInputTemp[field.name]" placeholder="输入后按回车添加" style="width: 150px" @keyup.enter="addArrayItem(field.name)" />
+          </div>
+          <!-- 对象类型 -->
+          <el-input v-else-if="field.type === 'object'" v-model="documentForm[field.name]" type="textarea" :rows="3" placeholder="请输入JSON格式数据" />
+          <!-- 默认文本 -->
+          <el-input v-else v-model="documentForm[field.name]" :placeholder="'请输入' + (field.display_name || field.name)" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showDocumentFormDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveDocument" :loading="documentSaving">保存</el-button>
+      </template>
+    </el-dialog>
+    
+    <!-- 数据导入对话框 -->
+    <el-dialog v-model="showImportDialog" title="导入数据" width="500px">
+      <el-upload
+        ref="importUploadRef"
+        drag
+        :auto-upload="false"
+        :limit="1"
+        accept=".json"
+        :on-change="handleImportFileChange"
+      >
+        <el-icon class="el-icon--upload"><Upload /></el-icon>
+        <div class="el-upload__text">将JSON文件拖到此处，或<em>点击上传</em></div>
+        <template #tip>
+          <div class="el-upload__tip">仅支持JSON格式文件，数据格式应为数组</div>
+        </template>
+      </el-upload>
+      <div v-if="importPreview.length > 0" style="margin-top: 16px">
+        <el-alert title="预览导入数据" type="info" :closable="false" style="margin-bottom: 8px" />
+        <div style="max-height: 200px; overflow-y: auto; background: #f5f7fa; padding: 8px; border-radius: 4px">
+          <pre style="margin: 0; font-size: 12px">{{ JSON.stringify(importPreview.slice(0, 3), null, 2) }}</pre>
+          <div v-if="importPreview.length > 3" style="color: #909399; margin-top: 8px">... 共 {{ importPreview.length }} 条数据</div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showImportDialog = false; importPreview = []">取消</el-button>
+        <el-button type="primary" @click="importDocuments" :loading="importLoading" :disabled="importPreview.length === 0">导入 ({{ importPreview.length }} 条)</el-button>
       </template>
     </el-dialog>
 
@@ -1346,9 +1439,19 @@ const documentLoading = ref(false)
 const documentPage = ref(1)
 const documentPageSize = ref(10)
 const documentTotal = ref(0)
-const showDocumentDialog = ref(false)
+const documentSearch = ref('')
+const selectedDocuments = ref([])
+const showDocumentFormDialog = ref(false)
 const documentForm = ref({})
+const documentFormRules = ref({})
+const documentFormRef = ref(null)
 const editingDocument = ref(null)
+const documentSaving = ref(false)
+const arrayInputTemp = ref({})
+const showImportDialog = ref(false)
+const importPreview = ref([])
+const importLoading = ref(false)
+const importUploadRef = ref(null)
 
 // 用户管理
 const userSearch = ref('')
@@ -1576,7 +1679,11 @@ const fetchDocuments = async () => {
   if (!currentCollection.value) return
   documentLoading.value = true
   try {
-    const res = await fetch(`/api/v1/baas/apps/${props.appId}/data/${currentCollection.value.name}?page=${documentPage.value}&size=${documentPageSize.value}`, {
+    let url = `/api/v1/baas/apps/${props.appId}/data/${currentCollection.value.name}?page=${documentPage.value}&size=${documentPageSize.value}`
+    if (documentSearch.value) {
+      url += `&search=${encodeURIComponent(documentSearch.value)}`
+    }
+    const res = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
@@ -1593,18 +1700,290 @@ const fetchDocuments = async () => {
   }
 }
 
+// 文档选择处理
+const handleDocumentSelection = (selection) => {
+  selectedDocuments.value = selection
+}
+
+// 打开文档表单
+const openDocumentForm = (doc = null) => {
+  editingDocument.value = doc
+  documentForm.value = {}
+  arrayInputTemp.value = {}
+  
+  // 生成表单验证规则
+  const rules = {}
+  currentCollection.value?.fields?.forEach(field => {
+    if (field.required) {
+      rules[field.name] = [{ required: true, message: `请输入${field.display_name || field.name}`, trigger: 'blur' }]
+    }
+  })
+  documentFormRules.value = rules
+  
+  if (doc) {
+    // 编辑模式，填充数据
+    currentCollection.value?.fields?.forEach(field => {
+      documentForm.value[field.name] = doc.data?.[field.name] ?? (field.type === 'boolean' ? false : (field.type === 'array' ? [] : ''))
+    })
+  } else {
+    // 新增模式，初始化默认值
+    currentCollection.value?.fields?.forEach(field => {
+      if (field.type === 'boolean') {
+        documentForm.value[field.name] = false
+      } else if (field.type === 'array') {
+        documentForm.value[field.name] = []
+      } else if (field.type === 'number') {
+        documentForm.value[field.name] = 0
+      } else {
+        documentForm.value[field.name] = ''
+      }
+    })
+  }
+  
+  showDocumentFormDialog.value = true
+}
+
+// 数组字段添加项
+const addArrayItem = (fieldName) => {
+  const value = arrayInputTemp.value[fieldName]?.trim()
+  if (value) {
+    if (!documentForm.value[fieldName]) {
+      documentForm.value[fieldName] = []
+    }
+    documentForm.value[fieldName].push(value)
+    arrayInputTemp.value[fieldName] = ''
+  }
+}
+
+// 数组字段删除项
+const removeArrayItem = (fieldName, index) => {
+  documentForm.value[fieldName]?.splice(index, 1)
+}
+
+// 保存文档
+const saveDocument = async () => {
+  if (!documentFormRef.value) return
+  
+  try {
+    await documentFormRef.value.validate()
+  } catch {
+    return
+  }
+  
+  documentSaving.value = true
+  try {
+    // 处理对象类型字段
+    const formData = { ...documentForm.value }
+    currentCollection.value?.fields?.forEach(field => {
+      if (field.type === 'object' && typeof formData[field.name] === 'string') {
+        try {
+          formData[field.name] = JSON.parse(formData[field.name])
+        } catch {
+          // 保持原样
+        }
+      }
+    })
+    
+    const url = editingDocument.value 
+      ? `/api/v1/baas/apps/${props.appId}/data/${currentCollection.value.name}/${editingDocument.value.id}`
+      : `/api/v1/baas/apps/${props.appId}/data/${currentCollection.value.name}`
+    
+    const res = await fetch(url, {
+      method: editingDocument.value ? 'PUT' : 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ data: formData })
+    })
+    
+    const data = await res.json()
+    if (data.code === 0) {
+      ElMessage.success(editingDocument.value ? '更新成功' : '创建成功')
+      showDocumentFormDialog.value = false
+      await fetchDocuments()
+    } else {
+      ElMessage.error(data.message || '保存失败')
+    }
+  } catch (error) {
+    console.error('保存文档失败:', error)
+    ElMessage.error('保存失败')
+  } finally {
+    documentSaving.value = false
+  }
+}
+
+// 删除单个文档
+const deleteDocument = async (doc) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这条数据吗？', '删除确认', { type: 'warning' })
+    
+    const res = await fetch(`/api/v1/baas/apps/${props.appId}/data/${currentCollection.value.name}/${doc.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    
+    const data = await res.json()
+    if (data.code === 0) {
+      ElMessage.success('删除成功')
+      await fetchDocuments()
+    } else {
+      ElMessage.error(data.message || '删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除文档失败:', error)
+      ElMessage.error('删除失败')
+    }
+  }
+}
+
+// 批量删除文档
+const batchDeleteDocuments = async () => {
+  if (selectedDocuments.value.length === 0) return
+  
+  try {
+    await ElMessageBox.confirm(`确定要删除选中的 ${selectedDocuments.value.length} 条数据吗？`, '批量删除确认', { type: 'warning' })
+    
+    let successCount = 0
+    for (const doc of selectedDocuments.value) {
+      try {
+        const res = await fetch(`/api/v1/baas/apps/${props.appId}/data/${currentCollection.value.name}/${doc.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+        const data = await res.json()
+        if (data.code === 0) successCount++
+      } catch (e) {
+        console.error('删除失败:', e)
+      }
+    }
+    
+    ElMessage.success(`成功删除 ${successCount} 条数据`)
+    selectedDocuments.value = []
+    await fetchDocuments()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('批量删除失败:', error)
+    }
+  }
+}
+
+// 导出文档
+const exportDocuments = async () => {
+  try {
+    // 获取所有数据
+    const res = await fetch(`/api/v1/baas/apps/${props.appId}/data/${currentCollection.value.name}?page=1&size=10000`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    const data = await res.json()
+    if (data.code === 0) {
+      const exportData = (data.data.list || []).map(doc => doc.data)
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${currentCollection.value.name}_${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      ElMessage.success(`导出成功，共 ${exportData.length} 条数据`)
+    }
+  } catch (error) {
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败')
+  }
+}
+
+// 处理导入文件选择
+const handleImportFileChange = (file) => {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result)
+      if (Array.isArray(data)) {
+        importPreview.value = data
+      } else {
+        ElMessage.error('文件格式错误，应为数组格式')
+        importPreview.value = []
+      }
+    } catch (error) {
+      ElMessage.error('JSON解析失败')
+      importPreview.value = []
+    }
+  }
+  reader.readAsText(file.raw)
+}
+
+// 执行导入
+const importDocuments = async () => {
+  if (importPreview.value.length === 0) return
+  
+  importLoading.value = true
+  let successCount = 0
+  let failCount = 0
+  
+  try {
+    for (const item of importPreview.value) {
+      try {
+        const res = await fetch(`/api/v1/baas/apps/${props.appId}/data/${currentCollection.value.name}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ data: item })
+        })
+        const data = await res.json()
+        if (data.code === 0) {
+          successCount++
+        } else {
+          failCount++
+        }
+      } catch (e) {
+        failCount++
+      }
+    }
+    
+    ElMessage.success(`导入完成：成功 ${successCount} 条，失败 ${failCount} 条`)
+    showImportDialog.value = false
+    importPreview.value = []
+    if (importUploadRef.value) {
+      importUploadRef.value.clearFiles()
+    }
+    await fetchDocuments()
+  } catch (error) {
+    console.error('导入失败:', error)
+    ElMessage.error('导入失败')
+  } finally {
+    importLoading.value = false
+  }
+}
+
+// 格式化日期时间
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-CN')
+}
+
 const editCollection = (collection) => {
   editingCollection.value = collection
   collectionForm.value = {
     name: collection.name,
     display_name: collection.display_name,
     description: collection.description,
-    schema: collection.schema || { fields: [] },
-    permissions: collection.permissions || {
-      read: 'public',
-      create: 'auth',
-      update: 'owner',
-      delete: 'owner'
+    fields: collection.fields || [],
+    permissions: {
+      read: collection.read_perm || 'public',
+      create: collection.create_perm || 'auth',
+      update: collection.update_perm || 'owner',
+      delete: collection.delete_perm || 'owner'
     }
   }
   showCollectionDialog.value = true
@@ -1671,7 +2050,7 @@ const resetCollectionForm = () => {
     name: '',
     display_name: '',
     description: '',
-    schema: { fields: [] },
+    fields: [],
     permissions: {
       read: 'public',
       create: 'auth',
@@ -1682,7 +2061,7 @@ const resetCollectionForm = () => {
 }
 
 const addField = () => {
-  collectionForm.value.schema.fields.push({
+  collectionForm.value.fields.push({
     name: '',
     display_name: '',
     type: 'string',
@@ -1692,7 +2071,7 @@ const addField = () => {
 }
 
 const removeField = (index) => {
-  collectionForm.value.schema.fields.splice(index, 1)
+  collectionForm.value.fields.splice(index, 1)
 }
 
 const copyApiEndpoint = (collectionName) => {
@@ -3401,6 +3780,26 @@ watch(() => props.initialMenu, (newVal) => {
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 12px;
     }
+  }
+}
+
+.data-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  
+  .toolbar-left {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  
+  .toolbar-right {
+    display: flex;
+    gap: 8px;
+    align-items: center;
   }
 }
 </style>
